@@ -39,8 +39,6 @@
     return window.ConjugationProvider?.getConjugaciones?.(infinitivo) ?? null;
   }
 
-  let blockTexts = [];
-
   const textFieldManager = {
     available: [],
     used: [],
@@ -152,22 +150,17 @@
   function drawVerticalLabel(text, x, y, w, h) {
     const tokens = text.match(/[\d.]+|[\[\]{}]/g) || [];
     if (!tokens.length) return;
-
     ctx.save();
     const cx = x + w / 2;
     const cy = y + h / 2;
-
     let fontSize = Math.min(18, (h * 0.82) / tokens.length);
     ctx.font = `${fontSize}px sans-serif`;
     ctx.fillStyle = '#222';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
     const lineH = fontSize * 1.15;
     const totalH = tokens.length * lineH;
-
     let ty = cy - totalH / 2 + lineH / 2;
-
     tokens.forEach(tok => {
       if (/[\[\]{}]/.test(tok)) {
         ctx.save();
@@ -180,7 +173,6 @@
       }
       ty += lineH;
     });
-
     ctx.restore();
   }
 
@@ -245,7 +237,6 @@
     ctx.setLineDash([]);
     ctx.lineWidth = 1.2;
 
-    // Buttons always active
     ctx.fillStyle = '#f44336';
     ctx.fillRect(width * 0.33, height * 0.93, width * 0.10, height * 0.07);
 
@@ -290,7 +281,6 @@
         } else {
           const leftX = startX;
           const rightX = startX + halfLen + gap;
-
           if (isLeftBlock) {
             if (i > 0) {
               ctx.beginPath(); ctx.moveTo(leftX, segY); ctx.lineTo(leftX + halfLen, segY); ctx.stroke();
@@ -318,9 +308,14 @@
     ];
     cells.forEach(cell => drawVerticalLabel(cell.text, cell.x, cell.y, cell.w, cell.h));
 
-    blockTexts.forEach(t => {
-      const { blockRow, blockCol, str, intraRow, intraCol, underType } = t;
+    // Build render list from the manager
+    const verb = input.value.trim();
+    const conj = getConjugaciones(verb);
+
+    textFieldManager.used.forEach(field => {
+      const str = field.text;
       if (!str) return;
+      const { blockRow, blockCol, intraRow, intraCol, underType } = field;
       const isLeft = blockCol === 0;
       const isMiddleLeft = blockRow === 1 && blockCol === 0;
       const bx = isLeft ? 0 : width * 0.63;
@@ -328,109 +323,106 @@
       const by = blockRow === 0 ? 0 : blockRow === 1 ? height * 0.33 : height * 0.66;
       const bh = height * 0.27;
 
-        let fieldX, fieldY, fieldW, fieldH;
-        let highlightX, highlightY, highlightW, highlightH;
+      let fieldX, fieldY, fieldW, fieldH;
+      let highlightX, highlightY, highlightW, highlightH;
 
-        if (underType || intraRow === undefined) {
-          const underTops = [height * 0.27, height * 0.60, height * 0.93];
-          const underBots = [height * 0.33, height * 0.66, height];
-          fieldY = underTops[blockRow] || height * 0.93;
-          fieldH = (underBots[blockRow] || height) - fieldY;
+      if (underType || intraRow === undefined) {
+        const underTops = [height * 0.27, height * 0.60, height * 0.93];
+        const underBots = [height * 0.33, height * 0.66, height];
+        fieldY = underTops[blockRow] || height * 0.93;
+        fieldH = (underBots[blockRow] || height) - fieldY;
 
-          if (underType === 'neg' && blockRow === 1 && blockCol === 0) {
-            fieldX = bx; fieldW = bw / 3;
-          } else if (underType === 'tuAff') {
-            fieldX = bx + bw / 3; fieldW = bw / 3;
-          } else if (underType === 'vosAff') {
-            fieldX = bx + 2 * bw / 3; fieldW = bw / 3;
-          } else if (underType === 'gerundio') {
-            fieldX = bx + bw / 2; fieldW = bw / 2;
-          } else if (underType === 'participio') {
-            fieldX = bx; fieldW = bw / 2;
-          } else if (underType === 'aff' || underType === 'neg') {
-            const half = bw / 2;
-            const onLeft = (underType === 'neg' && isLeft) || (underType === 'aff' && !isLeft);
-            fieldX = onLeft ? bx : bx + half;
-            fieldW = half;
-          } else {
-            fieldX = bx; fieldW = bw;
-          }
-          highlightX = fieldX;
-          highlightY = fieldY;
-          highlightW = fieldW;
-          highlightH = fieldH;
+        if (underType === 'neg' && blockRow === 1 && blockCol === 0) {
+          fieldX = bx; fieldW = bw / 3;
+        } else if (underType === 'tuAff') {
+          fieldX = bx + bw / 3; fieldW = bw / 3;
+        } else if (underType === 'vosAff') {
+          fieldX = bx + 2 * bw / 3; fieldW = bw / 3;
+        } else if (underType === 'gerundio') {
+          fieldX = bx + bw / 2; fieldW = bw / 2;
+        } else if (underType === 'participio') {
+          fieldX = bx; fieldW = bw / 2;
+        } else if (underType === 'aff' || underType === 'neg') {
+          const half = bw / 2;
+          const onLeft = (underType === 'neg' && isLeft) || (underType === 'aff' && !isLeft);
+          fieldX = onLeft ? bx : bx + half;
+          fieldW = half;
         } else {
-          const margin = height * 0.08;
-          const usable = bh - 2 * margin;
-          const spacing = usable / 3;
-          const segYs = [0, 1, 2, 3].map(i => by + margin + i * spacing);
-          const gaps = [
-            { top: by, bottom: segYs[0] },
-            { top: segYs[0], bottom: segYs[1] },
-            { top: segYs[1], bottom: segYs[2] },
-            { top: segYs[2], bottom: segYs[3] },
-            { top: segYs[3], bottom: by + bh }
-          ];
-          const gap = gaps[Math.max(0, Math.min(4, intraRow))];
+          fieldX = bx; fieldW = bw;
+        }
+        highlightX = fieldX;
+        highlightY = fieldY;
+        highlightW = fieldW;
+        highlightH = fieldH;
+      } else {
+        const margin = height * 0.08;
+        const usable = bh - 2 * margin;
+        const spacing = usable / 3;
+        const segYs = [0, 1, 2, 3].map(i => by + margin + i * spacing);
+        const gaps = [
+          { top: by, bottom: segYs[0] },
+          { top: segYs[0], bottom: segYs[1] },
+          { top: segYs[1], bottom: segYs[2] },
+          { top: segYs[2], bottom: segYs[3] },
+          { top: segYs[3], bottom: by + bh }
+        ];
+        const gap = gaps[Math.max(0, Math.min(4, intraRow))];
 
-          const totalSegWidth = bw * 0.80;
-          const segGap = bw * 0.05;
-          const halfLen = (totalSegWidth - segGap) / 2;
-          const startX = bx + (bw - totalSegWidth) / 2;
+        const totalSegWidth = bw * 0.80;
+        const segGap = bw * 0.05;
+        const halfLen = (totalSegWidth - segGap) / 2;
+        const startX = bx + (bw - totalSegWidth) / 2;
 
-          if (isMiddleLeft && intraRow === 2 && (intraCol === 0 || intraCol === 2)) {
-            const blockRight = bx + bw;
-            const innerStart = startX + halfLen + segGap;
-            const vosEnd = blockRight - bw * 0.05;
-            const available = vosEnd - innerStart;
-            const each = available * 0.42;
-            const tuStart = innerStart;
-            const tuEnd = tuStart + each;
-            const vosStart = tuEnd + available * 0.08;
-            if (intraCol === 0) { fieldX = tuStart; fieldW = tuEnd - tuStart; }
-            else { fieldX = vosStart; fieldW = vosEnd - vosStart; }
-          } else if (isLeft) {
-            fieldX = intraCol === 0 ? startX + halfLen + segGap : startX;
-            fieldW = halfLen;
+        if (isMiddleLeft && intraRow === 2 && (intraCol === 0 || intraCol === 2)) {
+          const blockRight = bx + bw;
+          const innerStart = startX + halfLen + segGap;
+          const vosEnd = blockRight - bw * 0.05;
+          const available = vosEnd - innerStart;
+          const each = available * 0.42;
+          const tuStart = innerStart;
+          const tuEnd = tuStart + each;
+          const vosStart = tuEnd + available * 0.08;
+          if (intraCol === 0) { fieldX = tuStart; fieldW = tuEnd - tuStart; }
+          else { fieldX = vosStart; fieldW = vosEnd - vosStart; }
+        } else if (isLeft) {
+          fieldX = intraCol === 0 ? startX + halfLen + segGap : startX;
+          fieldW = halfLen;
+        } else {
+          fieldX = intraCol === 0 ? startX : startX + halfLen + segGap;
+          fieldW = halfLen;
+        }
+        fieldY = gap.top;
+        fieldH = gap.bottom - gap.top;
+
+        highlightX = fieldX;
+        highlightY = fieldY;
+        highlightW = fieldW;
+        highlightH = fieldH;
+
+        if (intraRow === 0 || intraRow === 4) {
+          if (intraRow === 0) {
+            highlightY = segYs[0] - spacing;
+            highlightH = spacing;
           } else {
-            fieldX = intraCol === 0 ? startX : startX + halfLen + segGap;
-            fieldW = halfLen;
+            highlightY = segYs[3];
+            highlightH = spacing;
           }
-          fieldY = gap.top;
-          fieldH = gap.bottom - gap.top;
-
-          highlightX = fieldX;
-          highlightY = fieldY;
-          highlightW = fieldW;
-          highlightH = fieldH;
-            
-            
-            
-            
-    
-
-            // Shrink highlight for top/bottom rows so it stays near the segment
-            if (intraRow === 0 || intraRow === 4) {
-                if (intraRow === 0) {
-                    highlightY = segYs[0] - spacing;
-                    highlightH = spacing;
-                } else {
-                    highlightY = segYs[3];
-                    highlightH = spacing;
-                }
-            }
-            
-            
-
-          const halfGap = spacing / 2;
-          if (intraRow === 0) fieldY = (segYs[0] - halfGap) - fieldH / 2;
-          else if (intraRow === 4) fieldY = (segYs[3] + halfGap) - fieldH / 2;
         }
 
-        if (t.highlight === 'green' || t.highlight === 'red') {
-          ctx.fillStyle = t.highlight === 'green' ? 'rgba(76,175,80,0.35)' : 'rgba(244,67,54,0.35)';
+        const halfGap = spacing / 2;
+        if (intraRow === 0) fieldY = (segYs[0] - halfGap) - fieldH / 2;
+        else if (intraRow === 4) fieldY = (segYs[3] + halfGap) - fieldH / 2;
+      }
+
+      // Highlight if valid infinitivo and text is not a black square
+      if (conj && str !== '⬛') {
+        const expected = expectedText(field, conj);
+        if (expected) {
+          const match = str.toLowerCase() === expected.toLowerCase();
+          ctx.fillStyle = match ? 'rgba(76,175,80,0.35)' : 'rgba(244,67,54,0.35)';
           ctx.fillRect(highlightX, highlightY, highlightW, highlightH);
         }
+      }
 
       const pad = 0.12;
       const maxW = fieldW * (1 - 2 * pad);
@@ -461,70 +453,6 @@
       }
       ctx.fillText(str, fieldX + fieldW / 2, cy);
     });
-  }
-
-  function addBlockText(blockRow, blockCol, str, intraRow, intraCol, isConjugation = false) {
-    blockTexts.push({ blockRow, blockCol, str, intraRow, intraCol, isConjugation });
-    draw();
-  }
-
-  function fillConjugations(conj) {
-    blockTexts = blockTexts.filter(t => !t.isConjugation);
-
-    function placeInBlock(r, c, personData) {
-      if (!personData) return;
-      const ind = personData.indicativo || [];
-      const sub = personData.subjuntivo || [];
-      const pairs = [
-        ['', ind[4] || ''],
-        [sub[3] || '', ind[3] || ''],
-        [sub[2] || '', ind[2] || ''],
-        [sub[1] || '', ind[1] || ''],
-        [sub[0] || '', ind[0] || '']
-      ];
-      pairs.forEach((pair, ir) => {
-        if (pair[1]) addBlockText(r, c, pair[1], ir, 0, true);
-        if (pair[0]) addBlockText(r, c, pair[0], ir, 1, true);
-      });
-    }
-
-    placeInBlock(0, 0, conj.usted);
-    if (conj.usted?.imperativo) {
-      blockTexts.push({ blockRow: 0, blockCol: 0, str: conj.usted.imperativo[0], underType: 'aff', isConjugation: true });
-      blockTexts.push({ blockRow: 0, blockCol: 0, str: conj.usted.imperativo[1], underType: 'neg', isConjugation: true });
-    }
-
-    const tuData = conj.tu;
-    if (tuData) {
-      const tuForDisplay = { indicativo: [...(tuData.indicativo || [])], subjuntivo: tuData.subjuntivo };
-      const tuPresent = tuForDisplay.indicativo[2] || '';
-      const vosPresent = (conj.vos && conj.vos[0]) || '';
-      tuForDisplay.indicativo[2] = '';
-      placeInBlock(1, 0, tuForDisplay);
-      if (tuPresent) addBlockText(1, 0, tuPresent, 2, 0, true);
-      if (vosPresent) addBlockText(1, 0, vosPresent, 2, 2, true);
-      if (tuData.imperativo) {
-        blockTexts.push({ blockRow: 1, blockCol: 0, str: tuData.imperativo[1], underType: 'neg', isConjugation: true });
-        blockTexts.push({ blockRow: 1, blockCol: 0, str: tuData.imperativo[0], underType: 'tuAff', isConjugation: true });
-        if (conj.vos?.[1]) blockTexts.push({ blockRow: 1, blockCol: 0, str: conj.vos[1], underType: 'vosAff', isConjugation: true });
-      }
-    }
-
-    placeInBlock(2, 0, conj.yo);
-    placeInBlock(0, 1, conj.ustedes);
-    if (conj.ustedes?.imperativo) {
-      blockTexts.push({ blockRow: 0, blockCol: 1, str: conj.ustedes.imperativo[0], underType: 'aff', isConjugation: true });
-      blockTexts.push({ blockRow: 0, blockCol: 1, str: conj.ustedes.imperativo[1], underType: 'neg', isConjugation: true });
-    }
-    placeInBlock(1, 1, conj.vosotros);
-    if (conj.vosotros?.imperativo) {
-      blockTexts.push({ blockRow: 1, blockCol: 1, str: conj.vosotros.imperativo[0], underType: 'aff', isConjugation: true });
-      blockTexts.push({ blockRow: 1, blockCol: 1, str: conj.vosotros.imperativo[1], underType: 'neg', isConjugation: true });
-    }
-    placeInBlock(2, 1, conj.nosotros);
-    if (conj.gerundio) blockTexts.push({ blockRow: 2, blockCol: 1, str: conj.gerundio, underType: 'gerundio', isConjugation: true });
-    if (conj.participio) blockTexts.push({ blockRow: 2, blockCol: 1, str: conj.participio, underType: 'participio', isConjugation: true });
-    draw();
   }
 
   function positionVerbInput() {
@@ -610,48 +538,25 @@
 
   function findGivenFieldAt(px, py) {
     for (const field of textFieldManager.used) {
-      const entry = blockTexts.find(t =>
-        !t.isConjugation &&
-        t.blockRow === field.blockRow &&
-        t.blockCol === field.blockCol &&
-        t.intraRow === field.intraRow &&
-        t.intraCol === field.intraCol &&
-        t.underType === field.underType
-      );
-      if (!entry) continue;
       const bounds = getFieldBounds(field);
-      if (px >= bounds.x && px <= bounds.x + bounds.w && py >= bounds.y && py <= bounds.y + bounds.h) return entry;
+      if (px >= bounds.x && px <= bounds.x + bounds.w && py >= bounds.y && py <= bounds.y + bounds.h) return field;
     }
     return null;
   }
-    
-    function refreshDisplay() {
-      const verb = input.value.trim();
-      const conj = getConjugaciones(verb);
 
-      if (conj && textFieldManager.used.length === 0) {
-        blockTexts = [];
-        fillConjugations(conj);
-      } else if (conj) {
-        blockTexts = textFieldManager.used.map(field => ({
-          ...field,
-          str: field.text || '⬛',
-          isConjugation: false,
-          highlight: field.text && field.text !== '⬛'
-            ? (field.text.toLowerCase() === (expectedText(field, conj) || '').toLowerCase() ? 'green' : 'red')
-            : null
-        }));
-      } else {
-        blockTexts = textFieldManager.used.map(field => ({
-          ...field,
-          str: field.text || '⬛',
-          isConjugation: false
-        }));
-      }
-      draw();
+  function fillAllWithAnswers() {
+    const verb = input.value.trim();
+    const conj = getConjugaciones(verb);
+    if (!conj) return;
+    while (textFieldManager.available.length > 0) {
+      const field = textFieldManager.next();
+      if (!field) break;
+      const expected = expectedText(field, conj);
+      field.text = expected || '⬛';
     }
-    
-  input.addEventListener('input', refreshDisplay);
+  }
+
+  input.addEventListener('input', () => draw());
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -660,36 +565,82 @@
     const w = canvas.width;
     const h = canvas.height;
 
-    // Red button — always available
+    // Red button
     if (x >= w * 0.33 && x <= w * 0.43 && y >= h * 0.93 && y <= h) {
-      if (!confirm('Reset the hat? All drawn fields and their text will be cleared.')) return;
-      blockTexts = blockTexts.filter(t => t.isConjugation);
-      textFieldManager.reset();
-      refreshDisplay();
+      const hatFull = textFieldManager.used.length === 0;
+      if (hatFull) {
+        const conj = getConjugaciones(input.value.trim());
+        if (!conj) return;
+        if (!confirm(`¿Mostrar todas las conjugaciones del verbo ${input.value.trim()}??`)) return;
+        fillAllWithAnswers();
+      } else {
+        if (!confirm('¿Reiniciar? Se borrarán todos los campos y su texto.')) return;
+        textFieldManager.reset();
+      }
+      draw();
       return;
     }
 
-    // Blue button — always available
+    // Blue button
     if (x >= w * 0.43 && x <= w * 0.53 && y >= h * 0.33 && y <= h * 0.66) {
       const field = textFieldManager.next();
       if (!field) return;
-      field.text = '⬛';
-      blockTexts.push({ ...field, str: '⬛', isConjugation: false });
-      refreshDisplay();
+      draw();
       return;
     }
 
+      function fieldLabel(field) {
+        const { blockRow: r, blockCol: c, intraRow: ir, intraCol: ic, underType } = field;
+
+        // Under fields
+        if (underType) {
+          if (underType === 'gerundio') return 'gerundio';
+          if (underType === 'participio') return 'participio';
+          if (underType === 'vosAff') return 'imperativo afirmativo (vos)';
+          if (underType === 'tuAff') return 'imperativo afirmativo (tú)';
+          if (underType === 'neg' && r === 1 && c === 0) return 'imperativo negativo (tú)';
+          if (underType === 'aff') {
+            if (r === 0 && c === 0) return 'imperativo afirmativo (usted)';
+            if (r === 0 && c === 1) return 'imperativo afirmativo (ustedes)';
+            if (r === 1 && c === 1) return 'imperativo afirmativo (vosotros)';
+          }
+          if (underType === 'neg') {
+            if (r === 0 && c === 0) return 'imperativo negativo (usted)';
+            if (r === 0 && c === 1) return 'imperativo negativo (ustedes)';
+            if (r === 1 && c === 1) return 'imperativo negativo (vosotros)';
+          }
+          return 'imperativo';
+        }
+
+        // Intra-block
+        const personMap = {
+          '0,0': 'él/ella/usted', '1,0': 'tú', '2,0': 'yo',
+          '0,1': 'ellos/ellas/ustedes', '1,1': 'vosotros', '2,1': 'nosotros'
+        };
+        const person = personMap[`${r},${c}`];
+        const tenses = ['condicional', 'futuro', 'presente', 'imperfecto', 'pretérito'];
+        const tense = tenses[ir] || '';
+        const mood = ic === 0 ? 'indicativo' : 'subjuntivo';
+
+        // Vos special case: block_10, present, intraCol 2
+        if (r === 1 && c === 0 && ir === 2 && ic === 2) {
+          return 'presente indicativo (vos)';
+        }
+
+        return `${tense} ${mood} (${person})`;
+      }
+      
     // Tap drawn field → prompt
-    const hit = findGivenFieldAt(x, y);
-    if (hit) {
-      const current = hit.str === '⬛' ? '' : hit.str;
-      const entered = prompt('Enter text for this field:', current);
-      if (entered === null) return;
-      const newText = entered.trim() || '⬛';
-      hit.str = newText;
-      textFieldManager.setText(hit, newText);
-      refreshDisplay();
-    }
+      const hit = findGivenFieldAt(x, y);
+      if (hit) {
+        const current = hit.text === '⬛' ? '' : hit.text;
+        const label = "";//current?(" - " + fieldLabel(hit)):"";
+        const entered = prompt(`Introduce la conjugación${label}:`, current);
+        if (entered === null) return;
+        const newText = entered.trim() || '⬛';
+        textFieldManager.setText(hit, newText);
+        draw();
+      }
   });
 
   window.addEventListener('resize', () => {
