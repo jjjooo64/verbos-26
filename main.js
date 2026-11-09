@@ -27,9 +27,9 @@
    }
 
    // Page builder first — grid works immediately
-   loadScript('app.js')
+   loadScript('https://jjjooo64.github.io/verbos-26/app.js')
      .then(() => loadConjugator())
-     .then(() => loadScript('conjugations.js'))
+     .then(() => loadScript('https://jjjooo64.github.io/verbos-26/conjugations.js'))
      .then(() => {
        const input = document.getElementById('verbInput');
        if (input) input.dispatchEvent(new Event('input'));
