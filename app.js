@@ -637,7 +637,7 @@
       if (!confirm('Reset the hat? All drawn fields and their text will be cleared.')) return;
       blockTexts = blockTexts.filter(t => t.isConjugation);
       textFieldManager.reset();
-      draw();
+      refreshDisplay();
       return;
     }
 
@@ -647,7 +647,7 @@
       if (!field) return;
       field.text = '⬛';
       blockTexts.push({ ...field, str: '⬛', isConjugation: false });
-      draw();
+      refreshDisplay();
       return;
     }
 
