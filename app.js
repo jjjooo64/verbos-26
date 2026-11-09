@@ -328,81 +328,109 @@
       const by = blockRow === 0 ? 0 : blockRow === 1 ? height * 0.33 : height * 0.66;
       const bh = height * 0.27;
 
-      let fieldX, fieldY, fieldW, fieldH;
+        let fieldX, fieldY, fieldW, fieldH;
+        let highlightX, highlightY, highlightW, highlightH;
 
-      if (underType || intraRow === undefined) {
-        const underTops = [height * 0.27, height * 0.60, height * 0.93];
-        const underBots = [height * 0.33, height * 0.66, height];
-        fieldY = underTops[blockRow] || height * 0.93;
-        fieldH = (underBots[blockRow] || height) - fieldY;
+        if (underType || intraRow === undefined) {
+          const underTops = [height * 0.27, height * 0.60, height * 0.93];
+          const underBots = [height * 0.33, height * 0.66, height];
+          fieldY = underTops[blockRow] || height * 0.93;
+          fieldH = (underBots[blockRow] || height) - fieldY;
 
-        if (underType === 'neg' && blockRow === 1 && blockCol === 0) {
-          fieldX = bx; fieldW = bw / 3;
-        } else if (underType === 'tuAff') {
-          fieldX = bx + bw / 3; fieldW = bw / 3;
-        } else if (underType === 'vosAff') {
-          fieldX = bx + 2 * bw / 3; fieldW = bw / 3;
-        } else if (underType === 'gerundio') {
-          fieldX = bx + bw / 2; fieldW = bw / 2;
-        } else if (underType === 'participio') {
-          fieldX = bx; fieldW = bw / 2;
-        } else if (underType === 'aff' || underType === 'neg') {
-          const half = bw / 2;
-          const onLeft = (underType === 'neg' && isLeft) || (underType === 'aff' && !isLeft);
-          fieldX = onLeft ? bx : bx + half;
-          fieldW = half;
+          if (underType === 'neg' && blockRow === 1 && blockCol === 0) {
+            fieldX = bx; fieldW = bw / 3;
+          } else if (underType === 'tuAff') {
+            fieldX = bx + bw / 3; fieldW = bw / 3;
+          } else if (underType === 'vosAff') {
+            fieldX = bx + 2 * bw / 3; fieldW = bw / 3;
+          } else if (underType === 'gerundio') {
+            fieldX = bx + bw / 2; fieldW = bw / 2;
+          } else if (underType === 'participio') {
+            fieldX = bx; fieldW = bw / 2;
+          } else if (underType === 'aff' || underType === 'neg') {
+            const half = bw / 2;
+            const onLeft = (underType === 'neg' && isLeft) || (underType === 'aff' && !isLeft);
+            fieldX = onLeft ? bx : bx + half;
+            fieldW = half;
+          } else {
+            fieldX = bx; fieldW = bw;
+          }
+          highlightX = fieldX;
+          highlightY = fieldY;
+          highlightW = fieldW;
+          highlightH = fieldH;
         } else {
-          fieldX = bx; fieldW = bw;
+          const margin = height * 0.08;
+          const usable = bh - 2 * margin;
+          const spacing = usable / 3;
+          const segYs = [0, 1, 2, 3].map(i => by + margin + i * spacing);
+          const gaps = [
+            { top: by, bottom: segYs[0] },
+            { top: segYs[0], bottom: segYs[1] },
+            { top: segYs[1], bottom: segYs[2] },
+            { top: segYs[2], bottom: segYs[3] },
+            { top: segYs[3], bottom: by + bh }
+          ];
+          const gap = gaps[Math.max(0, Math.min(4, intraRow))];
+
+          const totalSegWidth = bw * 0.80;
+          const segGap = bw * 0.05;
+          const halfLen = (totalSegWidth - segGap) / 2;
+          const startX = bx + (bw - totalSegWidth) / 2;
+
+          if (isMiddleLeft && intraRow === 2 && (intraCol === 0 || intraCol === 2)) {
+            const blockRight = bx + bw;
+            const innerStart = startX + halfLen + segGap;
+            const vosEnd = blockRight - bw * 0.05;
+            const available = vosEnd - innerStart;
+            const each = available * 0.42;
+            const tuStart = innerStart;
+            const tuEnd = tuStart + each;
+            const vosStart = tuEnd + available * 0.08;
+            if (intraCol === 0) { fieldX = tuStart; fieldW = tuEnd - tuStart; }
+            else { fieldX = vosStart; fieldW = vosEnd - vosStart; }
+          } else if (isLeft) {
+            fieldX = intraCol === 0 ? startX + halfLen + segGap : startX;
+            fieldW = halfLen;
+          } else {
+            fieldX = intraCol === 0 ? startX : startX + halfLen + segGap;
+            fieldW = halfLen;
+          }
+          fieldY = gap.top;
+          fieldH = gap.bottom - gap.top;
+
+          highlightX = fieldX;
+          highlightY = fieldY;
+          highlightW = fieldW;
+          highlightH = fieldH;
+            
+            
+            
+            
+    
+
+            // Shrink highlight for top/bottom rows so it stays near the segment
+            if (intraRow === 0 || intraRow === 4) {
+                if (intraRow === 0) {
+                    highlightY = segYs[0] - spacing;
+                    highlightH = spacing;
+                } else {
+                    highlightY = segYs[3];
+                    highlightH = spacing;
+                }
+            }
+            
+            
+
+          const halfGap = spacing / 2;
+          if (intraRow === 0) fieldY = (segYs[0] - halfGap) - fieldH / 2;
+          else if (intraRow === 4) fieldY = (segYs[3] + halfGap) - fieldH / 2;
         }
-      } else {
-        const margin = height * 0.08;
-        const usable = bh - 2 * margin;
-        const spacing = usable / 3;
-        const segYs = [0, 1, 2, 3].map(i => by + margin + i * spacing);
-        const gaps = [
-          { top: by, bottom: segYs[0] },
-          { top: segYs[0], bottom: segYs[1] },
-          { top: segYs[1], bottom: segYs[2] },
-          { top: segYs[2], bottom: segYs[3] },
-          { top: segYs[3], bottom: by + bh }
-        ];
-        const gap = gaps[Math.max(0, Math.min(4, intraRow))];
 
-        const totalSegWidth = bw * 0.80;
-        const segGap = bw * 0.05;
-        const halfLen = (totalSegWidth - segGap) / 2;
-        const startX = bx + (bw - totalSegWidth) / 2;
-
-        if (isMiddleLeft && intraRow === 2 && (intraCol === 0 || intraCol === 2)) {
-          const blockRight = bx + bw;
-          const innerStart = startX + halfLen + segGap;
-          const vosEnd = blockRight - bw * 0.05;
-          const available = vosEnd - innerStart;
-          const each = available * 0.42;
-          const tuStart = innerStart;
-          const tuEnd = tuStart + each;
-          const vosStart = tuEnd + available * 0.08;
-          if (intraCol === 0) { fieldX = tuStart; fieldW = tuEnd - tuStart; }
-          else { fieldX = vosStart; fieldW = vosEnd - vosStart; }
-        } else if (isLeft) {
-          fieldX = intraCol === 0 ? startX + halfLen + segGap : startX;
-          fieldW = halfLen;
-        } else {
-          fieldX = intraCol === 0 ? startX : startX + halfLen + segGap;
-          fieldW = halfLen;
+        if (t.highlight === 'green' || t.highlight === 'red') {
+          ctx.fillStyle = t.highlight === 'green' ? 'rgba(76,175,80,0.35)' : 'rgba(244,67,54,0.35)';
+          ctx.fillRect(highlightX, highlightY, highlightW, highlightH);
         }
-        fieldY = gap.top;
-        fieldH = gap.bottom - gap.top;
-
-        const halfGap = spacing / 2;
-        if (intraRow === 0) fieldY = (segYs[0] - halfGap) - fieldH / 2;
-        else if (intraRow === 4) fieldY = (segYs[3] + halfGap) - fieldH / 2;
-      }
-
-      if (t.highlight === 'green' || t.highlight === 'red') {
-        ctx.fillStyle = t.highlight === 'green' ? 'rgba(76,175,80,0.35)' : 'rgba(244,67,54,0.35)';
-        ctx.fillRect(fieldX, fieldY, fieldW, fieldH);
-      }
 
       const pad = 0.12;
       const maxW = fieldW * (1 - 2 * pad);
