@@ -149,47 +149,40 @@
     return ic === 0 ? pairs[ir][1] : pairs[ir][0];
   }
 
-  function isDisplayOnly() {
-    return !!getConjugaciones(input.value.trim());
+  function drawVerticalLabel(text, x, y, w, h) {
+    const tokens = text.match(/[\d.]+|[\[\]{}]/g) || [];
+    if (!tokens.length) return;
+
+    ctx.save();
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+
+    let fontSize = Math.min(18, (h * 0.82) / tokens.length);
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.fillStyle = '#222';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const lineH = fontSize * 1.15;
+    const totalH = tokens.length * lineH;
+
+    let ty = cy - totalH / 2 + lineH / 2;
+
+    tokens.forEach(tok => {
+      if (/[\[\]{}]/.test(tok)) {
+        ctx.save();
+        ctx.translate(cx, ty);
+        ctx.rotate(Math.PI / 2);
+        ctx.fillText(tok, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillText(tok, cx, ty);
+      }
+      ty += lineH;
+    });
+
+    ctx.restore();
   }
-
-    function drawVerticalLabel(text, x, y, w, h) {
-      const tokens = text.match(/[\d.]+|[\[\]{}]/g) || [];
-      if (!tokens.length) return;
-
-      ctx.save();
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-
-      // Fit font so the stack fits the cell height
-      let fontSize = Math.min(18, (h * 0.82) / tokens.length);
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillStyle = '#222';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      // Measure actual stack height (rotated brackets are roughly fontSize tall)
-      const lineH = fontSize * 1.15;
-      const totalH = tokens.length * lineH;
-
-      // Center the stack
-      let ty = cy - totalH / 2 + lineH / 2;
-
-      tokens.forEach(tok => {
-        if (/[\[\]{}]/.test(tok)) {
-          ctx.save();
-          ctx.translate(cx, ty);
-          ctx.rotate(Math.PI / 2);
-          ctx.fillText(tok, 0, 0);
-          ctx.restore();
-        } else {
-          ctx.fillText(tok, cx, ty);
-        }
-        ty += lineH;
-      });
-
-      ctx.restore();
-    }
 
   function draw() {
     const vh = window.innerHeight;
@@ -252,11 +245,11 @@
     ctx.setLineDash([]);
     ctx.lineWidth = 1.2;
 
-    const displayOnly = isDisplayOnly();
-    ctx.fillStyle = displayOnly ? '#9e9e9e' : '#f44336';
+    // Buttons always active
+    ctx.fillStyle = '#f44336';
     ctx.fillRect(width * 0.33, height * 0.93, width * 0.10, height * 0.07);
 
-    ctx.fillStyle = displayOnly ? '#9e9e9e' : '#2196F3';
+    ctx.fillStyle = '#2196F3';
     ctx.fillRect(width * 0.43, height * 0.33, width * 0.10, height * 0.33);
 
     const blocks = [
@@ -268,68 +261,63 @@
       { x: width * 0.63, w: width * 0.37, y: height * 0.66, h: height * 0.27 }
     ];
 
-      blocks.forEach(block => {
-        const totalSegWidth = block.w * 0.80;
-        const gap = block.w * 0.05;
-        const halfLen = (totalSegWidth - gap) / 2;
-        const startX = block.x + (block.w - totalSegWidth) / 2;
-        const margin = height * 0.08;
-        const usable = block.h - 2 * margin;
-        const spacing = usable / 3;
-        const isLeftBlock = block.x < width * 0.5;
-        const isBlock10 = Math.abs(block.y - height * 0.33) < 2 && isLeftBlock;
+    blocks.forEach(block => {
+      const totalSegWidth = block.w * 0.80;
+      const gap = block.w * 0.05;
+      const halfLen = (totalSegWidth - gap) / 2;
+      const startX = block.x + (block.w - totalSegWidth) / 2;
+      const margin = height * 0.08;
+      const usable = block.h - 2 * margin;
+      const spacing = usable / 3;
+      const isLeftBlock = block.x < width * 0.5;
+      const isBlock10 = Math.abs(block.y - height * 0.33) < 2 && isLeftBlock;
 
-        for (let i = 0; i < 4; i++) {
-          const segY = block.y + margin + i * spacing;
+      for (let i = 0; i < 4; i++) {
+        const segY = block.y + margin + i * spacing;
 
-          if (isBlock10 && i === 2) {
-            // Special present split (unchanged)
-            ctx.beginPath(); ctx.moveTo(startX, segY); ctx.lineTo(startX + halfLen, segY); ctx.stroke();
-            const blockRight = block.x + block.w;
-            const innerStart = startX + halfLen + gap;
-            const vosEnd = blockRight - block.w * 0.05;
-            const available = vosEnd - innerStart;
-            const each = available * 0.42;
-            const tuStart = innerStart;
-            const tuEnd = tuStart + each;
-            const vosStart = tuEnd + available * 0.08;
-            ctx.beginPath(); ctx.moveTo(tuStart, segY); ctx.lineTo(tuEnd, segY); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(vosStart, segY); ctx.lineTo(vosEnd, segY); ctx.stroke();
-          } else {
-            const leftX = startX;
-            const rightX = startX + halfLen + gap;
+        if (isBlock10 && i === 2) {
+          ctx.beginPath(); ctx.moveTo(startX, segY); ctx.lineTo(startX + halfLen, segY); ctx.stroke();
+          const blockRight = block.x + block.w;
+          const innerStart = startX + halfLen + gap;
+          const vosEnd = blockRight - block.w * 0.05;
+          const available = vosEnd - innerStart;
+          const each = available * 0.42;
+          const tuStart = innerStart;
+          const tuEnd = tuStart + each;
+          const vosStart = tuEnd + available * 0.08;
+          ctx.beginPath(); ctx.moveTo(tuStart, segY); ctx.lineTo(tuEnd, segY); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(vosStart, segY); ctx.lineTo(vosEnd, segY); ctx.stroke();
+        } else {
+          const leftX = startX;
+          const rightX = startX + halfLen + gap;
 
-            if (isLeftBlock) {
-              // Left blocks: outer = left half (omit top), inner = right half (always)
-              if (i > 0) {
-                ctx.beginPath(); ctx.moveTo(leftX, segY); ctx.lineTo(leftX + halfLen, segY); ctx.stroke();
-              }
-              ctx.beginPath(); ctx.moveTo(rightX, segY); ctx.lineTo(rightX + halfLen, segY); ctx.stroke();
-            } else {
-              // Right blocks: outer = right half (omit top), inner = left half (always)
+          if (isLeftBlock) {
+            if (i > 0) {
               ctx.beginPath(); ctx.moveTo(leftX, segY); ctx.lineTo(leftX + halfLen, segY); ctx.stroke();
-              if (i > 0) {
-                ctx.beginPath(); ctx.moveTo(rightX, segY); ctx.lineTo(rightX + halfLen, segY); ctx.stroke();
-              }
+            }
+            ctx.beginPath(); ctx.moveTo(rightX, segY); ctx.lineTo(rightX + halfLen, segY); ctx.stroke();
+          } else {
+            ctx.beginPath(); ctx.moveTo(leftX, segY); ctx.lineTo(leftX + halfLen, segY); ctx.stroke();
+            if (i > 0) {
+              ctx.beginPath(); ctx.moveTo(rightX, segY); ctx.lineTo(rightX + halfLen, segY); ctx.stroke();
             }
           }
         }
-      });
+      }
+    });
 
-    // Central region labels — centered in the exact cells defined by the lines
-      const cells = [
-        { text: '3',     x: width * 0.33, y: 0,             w: width * 0.10, h: height * 0.16 },
-        { text: '2.5',   x: width * 0.33, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
-        { text: '2',     x: width * 0.39, y: height * 0.33, w: width * 0.04, h: height * 0.33 },
-        { text: '1',     x: width * 0.33, y: height * 0.66, w: width * 0.10, h: height * 0.27 },
-        { text: '{3 3}',         x: width * 0.43, y: 0,             w: width * 0.10, h: height * 0.16 },
-        { text: '{2.5 [2.5 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
-        { text: '{2 [2 2.5 3]}', x: width * 0.53, y: 0,             w: width * 0.10, h: height * 0.66 },
-        { text: '{1 [2 2.5 3]}', x: width * 0.43, y: height * 0.66, w: width * 0.20, h: height * 0.27 }
-      ];
+    const cells = [
+      { text: '3',     x: width * 0.33, y: 0,             w: width * 0.10, h: height * 0.16 },
+      { text: '2.5',   x: width * 0.33, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
+      { text: '2',     x: width * 0.39, y: height * 0.33, w: width * 0.04, h: height * 0.33 },
+      { text: '1',     x: width * 0.33, y: height * 0.66, w: width * 0.10, h: height * 0.27 },
+      { text: '{3 3}',         x: width * 0.43, y: 0,             w: width * 0.10, h: height * 0.16 },
+      { text: '{2.5 [2.5 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
+      { text: '{2 [2 2.5 3]}', x: width * 0.53, y: 0,             w: width * 0.10, h: height * 0.66 },
+      { text: '{1 [2 2.5 3]}', x: width * 0.43, y: height * 0.66, w: width * 0.20, h: height * 0.27 }
+    ];
     cells.forEach(cell => drawVerticalLabel(cell.text, cell.x, cell.y, cell.w, cell.h));
 
-    // Field texts
     blockTexts.forEach(t => {
       const { blockRow, blockCol, str, intraRow, intraCol, underType } = t;
       if (!str) return;
@@ -608,15 +596,15 @@
     }
     return null;
   }
+    
+    function refreshDisplay() {
+      const verb = input.value.trim();
+      const conj = getConjugaciones(verb);
 
-  input.addEventListener('input', () => {
-    const verb = input.value.trim();
-    const conj = getConjugaciones(verb);
-    if (conj) {
-      if (textFieldManager.used.length === 0) {
+      if (conj && textFieldManager.used.length === 0) {
         blockTexts = [];
         fillConjugations(conj);
-      } else {
+      } else if (conj) {
         blockTexts = textFieldManager.used.map(field => ({
           ...field,
           str: field.text || '⬛',
@@ -625,16 +613,17 @@
             ? (field.text.toLowerCase() === (expectedText(field, conj) || '').toLowerCase() ? 'green' : 'red')
             : null
         }));
+      } else {
+        blockTexts = textFieldManager.used.map(field => ({
+          ...field,
+          str: field.text || '⬛',
+          isConjugation: false
+        }));
       }
-    } else {
-      blockTexts = textFieldManager.used.map(field => ({
-        ...field,
-        str: field.text || '⬛',
-        isConjugation: false
-      }));
+      draw();
     }
-    draw();
-  });
+    
+  input.addEventListener('input', refreshDisplay);
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -643,8 +632,8 @@
     const w = canvas.width;
     const h = canvas.height;
 
+    // Red button — always available
     if (x >= w * 0.33 && x <= w * 0.43 && y >= h * 0.93 && y <= h) {
-      if (isDisplayOnly()) return;
       if (!confirm('Reset the hat? All drawn fields and their text will be cleared.')) return;
       blockTexts = blockTexts.filter(t => t.isConjugation);
       textFieldManager.reset();
@@ -652,8 +641,8 @@
       return;
     }
 
+    // Blue button — always available
     if (x >= w * 0.43 && x <= w * 0.53 && y >= h * 0.33 && y <= h * 0.66) {
-      if (isDisplayOnly()) return;
       const field = textFieldManager.next();
       if (!field) return;
       field.text = '⬛';
@@ -662,15 +651,16 @@
       return;
     }
 
-    if (!isDisplayOnly()) {
-      const hit = findGivenFieldAt(x, y);
-      if (hit) {
-        const inputVal = input.value.trim();
-        const newText = inputVal || '⬛';
-        hit.str = newText;
-        textFieldManager.setText(hit, newText);
-        draw();
-      }
+    // Tap drawn field → prompt
+    const hit = findGivenFieldAt(x, y);
+    if (hit) {
+      const current = hit.str === '⬛' ? '' : hit.str;
+      const entered = prompt('Enter text for this field:', current);
+      if (entered === null) return;
+      const newText = entered.trim() || '⬛';
+      hit.str = newText;
+      textFieldManager.setText(hit, newText);
+      refreshDisplay();
     }
   });
 
