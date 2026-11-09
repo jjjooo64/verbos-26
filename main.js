@@ -27,9 +27,9 @@
    }
 
    // Page builder first — grid works immediately
-   loadScript(app_js_url)
+   loadScript(config.app_js_url)
      .then(() => loadConjugator())
-     .then(() => loadScript(conjugations_js_url))
+     .then(() => loadScript(config.conjugations_js_url))
      .then(() => {
        const input = document.getElementById('verbInput');
        if (input) input.dispatchEvent(new Event('input'));
