@@ -245,8 +245,7 @@
     ctx.setLineDash([]);
     ctx.lineWidth = 1.2;
 
-    ctx.fillStyle = '#f44336';
-    ctx.fillRect(width * 0.33, height * 0.93, width * 0.10, height * 0.07);
+ 
 
     ctx.fillStyle = '#2196F3';
     ctx.fillRect(width * 0.43, height * 0.33, width * 0.10, height * 0.33);
@@ -310,29 +309,160 @@
       { text: '2',     x: width * 0.39, y: height * 0.33, w: width * 0.04, h: height * 0.33 },
       { text: '1',     x: width * 0.33, y: height * 0.66, w: width * 0.10, h: height * 0.27 },
       { text: '{3 3}',         x: width * 0.43, y: 0,             w: width * 0.10, h: height * 0.16 },
-      { text: '{2.5 [2.5 2 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
+      { text: '{2.5 [2 2.5 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
       { text: '{2 [2 3]}', x: width * 0.53, y: 0,             w: width * 0.10, h: height * 0.66 },
       { text: '{1 [2 2.5 3]}', x: width * 0.43, y: height * 0.66, w: width * 0.20, h: height * 0.27 }
     ];
     cells.forEach(cell => drawVerticalLabel(cell.text, cell.x, cell.y, cell.w, cell.h));
 
 
+      
     // Expanded red button (33% to 63%, bottom strip)
-    ctx.fillStyle = 'rgba(180, 60, 60, 0.55)';
+    ctx.fillStyle = 'rgba(255, 30, 30, 1)';
     ctx.fillRect(width * 0.33, height * 0.93, width * 0.30, height * 0.07);
 
-    // Two-line text centered in the expanded button
+      //======================
+      // Two pyramids: J's then O's, centered in the expanded button
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const btnCenterX = width * 0.48;
+      const btnCenterY = height * 0.965;
+      const letterSpacing = width * 0.02;
+      const rowSpacing = height * 0.016;
+      const baseFontSize = Math.max(13, height * 0.02);
+      const topFontSize = baseFontSize * 1.2;
+
+      // J pyramid (left)
+      const jBaseX = btnCenterX - letterSpacing * 2.2;
+
+      // Top J — bigger and stretched 50% widthwise
+      ctx.save();
+      var useserif = true;
+      ctx.font = `bold ${topFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
+      ctx.translate(jBaseX, btnCenterY - rowSpacing * 0.6);
+      ctx.scale(1.9, 1);
+      ctx.fillText('J', 0, 0);
+      ctx.restore();
+
+      // Bottom J's
+      ctx.font = `bold ${baseFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
+      ctx.fillText('J', jBaseX - letterSpacing * 1, btnCenterY + rowSpacing * 0.6);
+      ctx.fillText('J', jBaseX + letterSpacing * 0.7, btnCenterY + rowSpacing * 0.6);
+
+      
+      // Period between the pyramids, bottom tip on the baseline
+      /*
+      ctx.save();
+      ctx.font = `bold ${topFontSize}px "Times New Roman", Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      const baselineY = btnCenterY + rowSpacing * 0.35 + baseFontSize * 0.35;
+      ctx.fillText('.', btnCenterX, baselineY);
+      ctx.restore();
+       */
+      
+      
+      // O pyramid (right)
+      const oBaseX = btnCenterX + letterSpacing * 2.2;
+
+      // Top O — bigger and stretched 50% widthwise
+      ctx.save();
+      ctx.font = `bold ${topFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
+      ctx.translate(oBaseX, btnCenterY - rowSpacing * 0.6);
+      ctx.scale(1.7, 1);
+      ctx.fillText('O', 0, 0);
+      ctx.restore();
+
+      // Bottom O's
+      ctx.font = `bold ${baseFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
+      ctx.fillText('O', oBaseX - letterSpacing * 0.7, btnCenterY + rowSpacing * 0.6);
+      ctx.fillText('O', oBaseX + letterSpacing * 0.7, btnCenterY + rowSpacing * 0.6);
+
+      ctx.restore();
+      
+      //==================
+      // Pyramids stacked in the blue button
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const blueCenterX = width * 0.48;
+      const blueCenterY = height * 0.495;
+      const blueLetterSpacing = width * 0.022;
+      const blueRowSpacing = height * 0.027;
+      const blueBaseFont = Math.max(14, height * 0.0215);
+      const blueTopFont = blueBaseFont * 1.2;
+
+      // J pyramid (top)
+      const jTopY = blueCenterY - height * 0.04;
+
+      ctx.save();
+      ctx.font = `bold ${blueTopFont}px "Times New Roman", Georgia, serif`;
+      ctx.translate(blueCenterX, jTopY - blueRowSpacing * 0.35);
+      ctx.scale(1.9, 1);
+      ctx.fillText('J', 0, 0);
+      ctx.restore();
+
+      ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
+      ctx.fillText('J', blueCenterX - blueLetterSpacing * 1, jTopY + blueRowSpacing * 0.35);
+      ctx.fillText('J', blueCenterX + blueLetterSpacing * 0.7, jTopY + blueRowSpacing * 0.35);
+
+      // Period between
+      /*
+      ctx.save();
+      ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
+      ctx.textBaseline = 'alphabetic';
+      const blueBaselineY = jTopY + blueRowSpacing * 0.35 + blueBaseFont * 0.35;
+      ctx.fillText('.', blueCenterX, blueBaselineY + height * 0.02);
+      ctx.restore();
+       */
+
+      // O pyramid (bottom)
+      const oTopY = blueCenterY + height * 0.04;
+
+      ctx.save();
+      ctx.font = `bold ${blueTopFont}px "Times New Roman", Georgia, serif`;
+      ctx.translate(blueCenterX, oTopY - blueRowSpacing * 0.35);
+      ctx.scale(1.5, 1);
+      ctx.fillText('O', 0, 0);
+      ctx.restore();
+
+      ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
+      ctx.fillText('O', blueCenterX - blueLetterSpacing * 0.7, oTopY + blueRowSpacing * 0.35);
+      ctx.fillText('O', blueCenterX + blueLetterSpacing * 0.7, oTopY + blueRowSpacing * 0.35);
+
+      ctx.restore();
+      //=======================
+      /*
+    // Three-line text centered in the expanded button
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-    ctx.font = `${Math.max(11, height * 0.016)}px sans-serif`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
+    ctx.font = `${Math.max(11, height * 0.015)}px serif`;
+      ctx.font = `${Math.max(11, height * 0.016)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const btnCenterX = width * 0.48;
+      const btnCenterY = height * 0.965;
+      ctx.fillText('Un paso en el camino.', btnCenterX, btnCenterY - height * 0.012);
+      ctx.fillText('JJJ.ooo', btnCenterX, btnCenterY + height * 0.012);
+      ctx.restore();
+      
+      */
+      /*
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const btnCenterX = width * 0.48;
     const btnCenterY = height * 0.965;
-    ctx.fillText('un paso en el camino', btnCenterX, btnCenterY - height * 0.012);
-    ctx.fillText('jjj.ooo', btnCenterX, btnCenterY + height * 0.012);
+    const lineSpacing = height * 0.016;
+    ctx.fillText('Un paso', btnCenterX, btnCenterY - lineSpacing);
+    ctx.fillText('en el camino.', btnCenterX, btnCenterY);
+    ctx.fillText('jjj.ooo', btnCenterX, btnCenterY + lineSpacing);
     ctx.restore();
-
+*/
     
     // Build render list from the manager
     const verb = input.value.trim();
