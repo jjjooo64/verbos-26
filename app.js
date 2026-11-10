@@ -302,8 +302,8 @@
       { text: '2',     x: width * 0.39, y: height * 0.33, w: width * 0.04, h: height * 0.33 },
       { text: '1',     x: width * 0.33, y: height * 0.66, w: width * 0.10, h: height * 0.27 },
       { text: '{3 3}',         x: width * 0.43, y: 0,             w: width * 0.10, h: height * 0.16 },
-      { text: '{2.5 [2.5 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
-      { text: '{2 [2 2.5 3]}', x: width * 0.53, y: 0,             w: width * 0.10, h: height * 0.66 },
+      { text: '{2.5 [2.5 2 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
+      { text: '{2 [2 3]}', x: width * 0.53, y: 0,             w: width * 0.10, h: height * 0.66 },
       { text: '{1 [2 2.5 3]}', x: width * 0.43, y: height * 0.66, w: width * 0.20, h: height * 0.27 }
     ];
     cells.forEach(cell => drawVerticalLabel(cell.text, cell.x, cell.y, cell.w, cell.h));
