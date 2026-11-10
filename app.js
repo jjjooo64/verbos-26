@@ -232,7 +232,15 @@
     ctx.beginPath(); ctx.moveTo(x63, 0); ctx.lineTo(x63, y93); ctx.stroke();
 
     const x53 = width * 0.53;
-    ctx.beginPath(); ctx.moveTo(x53, 0); ctx.lineTo(x53, y66); ctx.stroke();
+    // Dotted above the blue button
+    ctx.beginPath(); ctx.moveTo(x53, 0); ctx.lineTo(x53, y33); ctx.stroke();
+    
+    ctx.setLineDash([]);
+    
+    ctx.lineWidth = 1.2;
+
+    // Solid line along blue button's right edge
+    ctx.beginPath(); ctx.moveTo(x53, y33); ctx.lineTo(x53, y66); ctx.stroke();
 
     ctx.setLineDash([]);
     ctx.lineWidth = 1.2;
@@ -308,6 +316,24 @@
     ];
     cells.forEach(cell => drawVerticalLabel(cell.text, cell.x, cell.y, cell.w, cell.h));
 
+
+    // Expanded red button (33% to 63%, bottom strip)
+    ctx.fillStyle = 'rgba(180, 60, 60, 0.55)';
+    ctx.fillRect(width * 0.33, height * 0.93, width * 0.30, height * 0.07);
+
+    // Two-line text centered in the expanded button
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.font = `${Math.max(11, height * 0.016)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const btnCenterX = width * 0.48;
+    const btnCenterY = height * 0.965;
+    ctx.fillText('un paso en el camino', btnCenterX, btnCenterY - height * 0.012);
+    ctx.fillText('jjj.ooo', btnCenterX, btnCenterY + height * 0.012);
+    ctx.restore();
+
+    
     // Build render list from the manager
     const verb = input.value.trim();
     const conj = getConjugaciones(verb);
@@ -566,7 +592,7 @@
     const h = canvas.height;
 
     // Red button
-    if (x >= w * 0.33 && x <= w * 0.43 && y >= h * 0.93 && y <= h) {
+    if (x >= w * 0.33 && x <= w * 0.63 && y >= h * 0.93 && y <= h ) {
       const hatFull = textFieldManager.used.length === 0;
       if (hatFull) {
         const conj = getConjugaciones(input.value.trim());
