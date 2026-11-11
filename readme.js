@@ -1,5 +1,5 @@
 /* 
-
+source: https://github.com/jjjooo64/verbos-26/
 This repository, while living in its original location on github, provides a live instantiation of a web app for practicing Spanish conjugations. 
 
 It is built with an architecture that allows it to be easily (and, at the time of writing, cheaply) hosted with the superstatic-26 methodology ( https://github.com/jjjooo64/superstatic-26 ), 
