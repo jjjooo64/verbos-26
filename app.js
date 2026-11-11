@@ -11,11 +11,7 @@
       display: block; background: #f8f8f8;
       box-shadow: 0 4px 24px rgba(0,0,0,0.4); cursor: pointer;
     }
-    #verbInput {
-      position: absolute; border: 1px solid #999; padding: 2px 4px;
-      font-size: 13px; text-align: center; background: #fff;
-      box-sizing: border-box; display: none;
-    }
+
   `;
   document.head.appendChild(style);
 
@@ -24,16 +20,76 @@
   stage.style.cssText = 'position:relative; display:inline-block;';
   const canvas = document.createElement('canvas');
   canvas.id = 'grid';
-  const input = document.createElement('input');
-  input.id = 'verbInput';
-  input.type = 'text';
-  input.placeholder = 'verbo (ej. comer)';
   stage.appendChild(canvas);
-  stage.appendChild(input);
   document.body.appendChild(stage);
 
   const ctx = canvas.getContext('2d');
   const PHI = 1.61803398875;
+  let infinitivo = '';
+
+  const DASH_VERTICAL = [2, 5];
+  const DASH_HORIZONTAL = [2, 3];
+
+  const guides = {
+    x0:   () => 0,
+    x33:  () => canvas.width * 0.33,
+    x39:  () => canvas.width * 0.39,
+    x43:  () => canvas.width * 0.43,
+    x53:  () => canvas.width * 0.53,
+    x63:  () => canvas.width * 0.63,
+    xRight: () => canvas.width,
+    y0:   () => 0,
+    y16:  () => canvas.height * (4/35),
+    y27:  () => canvas.height * (9/35),
+    y33:  () => canvas.height * (11/35),
+    y495: () => canvas.height * (17.5/35),
+    y60:  () => canvas.height * (21/35),
+    y66:  () => canvas.height * (23.65/35),
+    y93:  () => canvas.height * (33/35),
+    yBot: () => canvas.height
+  };
+
+  class Rect {
+    constructor(left, top, right, bottom) {
+      this.left = left;
+      this.top = top;
+      this.right = right;
+      this.bottom = bottom;
+    }
+    getX() { return this.left(); }
+    getY() { return this.top(); }
+    getWidth() { return this.right() - this.left(); }
+    getHeight() { return this.bottom() - this.top(); }
+    containsPoint(px, py) {
+      const x = this.getX(), y = this.getY();
+      return px >= x && px <= x + this.getWidth() && py >= y && py <= y + this.getHeight();
+    }
+  }
+
+  const layout = {
+    blueButton: new Rect(guides.x43, guides.y495, guides.x53, guides.y66),
+    redButton:  new Rect(guides.x43, guides.y33, guides.x53, guides.y495),
+    blocks: [
+      new Rect(guides.x0,  guides.y0,  guides.x33, guides.y27),
+      new Rect(guides.x63, guides.y0,  guides.xRight, guides.y27),
+      new Rect(guides.x0,  guides.y33, guides.x33, guides.y60),
+      new Rect(guides.x63, guides.y33, guides.xRight, guides.y60),
+      new Rect(guides.x0,  guides.y66, guides.x33, guides.y93),
+      new Rect(guides.x63, guides.y66, guides.xRight, guides.y93)
+    ],
+    randomButton: new Rect(guides.x33, guides.y93, guides.x43, guides.yBot),
+    cells: [
+      { text: '3',             rect: new Rect(guides.x33, guides.y0,  guides.x43, guides.y16) },
+      { text: '2.5',           rect: new Rect(guides.x33, guides.y16, guides.x43, guides.y33) },
+      { text: '2',             rect: new Rect(guides.x33, guides.y33, guides.x43, guides.y66) },
+      { text: '1',             rect: new Rect(guides.x33, guides.y66, guides.x43, guides.y93) },
+      { text: '3 3',         rect: new Rect(guides.x43, guides.y0,  guides.x53, guides.y16) },
+      { text: '2.5 [2 2.5 3]', rect: new Rect(guides.x43, guides.y16, guides.x53, guides.y33) },
+      { text: '2 [2 3]',     rect: new Rect(guides.x53, guides.y0,  guides.x63, guides.y66) },
+      { text: '1 [2 2.5 3]', rect: new Rect(guides.x53, guides.y66, guides.x63, guides.yBot) },
+      { text: '', rect: new Rect(guides.x43, guides.y66, guides.x53, guides.yBot) }
+    ]
+  };
 
   function getConjugaciones(infinitivo) {
     return window.ConjugationProvider?.getConjugaciones?.(infinitivo) ?? null;
@@ -44,30 +100,37 @@
     used: [],
     _buildAll() {
       const fields = [];
+      const inBlockKeys = [
+        [null, 'ind.condicional'],
+        ['sub.futuro', 'ind.futuro'],
+        ['sub.presente', 'ind.presente'],
+        ['sub.ra', 'ind.imperfecto'],
+        ['sub.se', 'ind.preterito']
+      ];
       for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 2; c++) {
           for (let ir = 0; ir < 5; ir++) {
             for (let ic = 0; ic < 2; ic++) {
-              if (ir === 0 && ic === 1) continue;
+              const key = inBlockKeys[ir][ic === 0 ? 1 : 0];
+              if (!key) continue;
               if (r === 1 && c === 0 && ir === 2 && ic === 0) {
-                fields.push({ blockRow: r, blockCol: c, intraRow: ir, intraCol: 0 });
-                fields.push({ blockRow: r, blockCol: c, intraRow: ir, intraCol: 2 });
+                fields.push({ blockRow: r, blockCol: c, intraRow: ir, intraCol: 0, formKey: 'ind.presente' });
+                fields.push({ blockRow: r, blockCol: c, intraRow: ir, intraCol: 2, formKey: 'ind.presente.vos' });
                 continue;
               }
-              fields.push({ blockRow: r, blockCol: c, intraRow: ir, intraCol: ic });
+              fields.push({ blockRow: r, blockCol: c, intraRow: ir, intraCol: ic, formKey: key });
             }
           }
           if (r === 1 && c === 0) {
-            fields.push({ blockRow: r, blockCol: c, underType: 'neg' });
-            fields.push({ blockRow: r, blockCol: c, underType: 'tuAff' });
-            fields.push({ blockRow: r, blockCol: c, underType: 'vosAff' });
-          } else if (r === 2 && c === 1) {
-            fields.push({ blockRow: r, blockCol: c, underType: 'gerundio' });
-            fields.push({ blockRow: r, blockCol: c, underType: 'participio' });
+            fields.push({ blockRow: r, blockCol: c, underType: 'neg', formKey: 'imp.neg' });
+            fields.push({ blockRow: r, blockCol: c, underType: 'tuAff', formKey: 'imp.aff' });
+            fields.push({ blockRow: r, blockCol: c, underType: 'vosAff', formKey: 'imp.aff.vos' });
           } else if (r === 2 && c === 0) {
+            fields.push({ blockRow: r, blockCol: c, underType: 'gerundio', formKey: 'gerundio' });
+            fields.push({ blockRow: r, blockCol: c, underType: 'participio', formKey: 'participio' });
           } else {
-            fields.push({ blockRow: r, blockCol: c, underType: 'aff' });
-            fields.push({ blockRow: r, blockCol: c, underType: 'neg' });
+            fields.push({ blockRow: r, blockCol: c, underType: 'aff', formKey: 'imp.aff' });
+            fields.push({ blockRow: r, blockCol: c, underType: 'neg', formKey: 'imp.neg' });
           }
         }
       }
@@ -89,9 +152,7 @@
       const entry = this.used.find(f =>
         f.blockRow === field.blockRow &&
         f.blockCol === field.blockCol &&
-        f.intraRow === field.intraRow &&
-        f.intraCol === field.intraCol &&
-        f.underType === field.underType
+        f.formKey === field.formKey
       );
       if (entry) entry.text = text;
     }
@@ -100,28 +161,8 @@
   textFieldManager.reset();
 
   function expectedText(field, conj) {
-    if (!conj) return null;
-    const { blockRow: r, blockCol: c, intraRow: ir, intraCol: ic, underType } = field;
-    if (underType) {
-      if (r === 1 && c === 0) {
-        if (underType === 'neg') return conj.tu?.imperativo?.[1] || null;
-        if (underType === 'tuAff') return conj.tu?.imperativo?.[0] || null;
-        if (underType === 'vosAff') return conj.vos?.[1] || null;
-      }
-      if (underType === 'gerundio') return conj.gerundio || null;
-      if (underType === 'participio') return conj.participio || null;
-      if (underType === 'aff') {
-        if (r === 0 && c === 0) return conj.usted?.imperativo?.[0] || null;
-        if (r === 0 && c === 1) return conj.ustedes?.imperativo?.[0] || null;
-        if (r === 1 && c === 1) return conj.vosotros?.imperativo?.[0] || null;
-      }
-      if (underType === 'neg') {
-        if (r === 0 && c === 0) return conj.usted?.imperativo?.[1] || null;
-        if (r === 0 && c === 1) return conj.ustedes?.imperativo?.[1] || null;
-        if (r === 1 && c === 1) return conj.vosotros?.imperativo?.[1] || null;
-      }
-      return null;
-    }
+    if (!conj || !field.formKey) return null;
+    const { blockRow: r, blockCol: c, formKey } = field;
     let person;
     if (r === 0 && c === 0) person = conj.usted;
     else if (r === 1 && c === 0) person = conj.tu;
@@ -129,22 +170,27 @@
     else if (r === 0 && c === 1) person = conj.ustedes;
     else if (r === 1 && c === 1) person = conj.vosotros;
     else if (r === 2 && c === 1) person = conj.nosotros;
-    if (!person) return null;
-    const ind = person.indicativo || [];
-    const sub = person.subjuntivo || [];
-    const pairs = [
-      ['', ind[4] || ''],
-      [sub[3] || '', ind[3] || ''],
-      [sub[2] || '', ind[2] || ''],
-      [sub[1] || '', ind[1] || ''],
-      [sub[0] || '', ind[0] || '']
-    ];
-    if (ir === undefined || ir < 0 || ir > 4) return null;
-    if (r === 1 && c === 0 && ir === 2) {
-      if (ic === 0) return ind[2] || null;
-      if (ic === 2) return conj.vos?.[0] || null;
-    }
-    return ic === 0 ? pairs[ir][1] : pairs[ir][0];
+    const ind = person?.indicativo || [];
+    const sub = person?.subjuntivo || [];
+    const imp = person?.imperativo || [];
+    const map = {
+      'sub.futuro': sub[3],
+      'sub.presente': sub[2],
+      'sub.ra': sub[1],
+      'sub.se': sub[0],
+      'ind.condicional': ind[4],
+      'ind.futuro': ind[3],
+      'ind.presente': ind[2],
+      'ind.presente.vos': conj.vos?.[0],
+      'ind.imperfecto': ind[1],
+      'ind.preterito': ind[0],
+      'imp.aff': imp[0],
+      'imp.aff.vos': conj.vos?.[1],
+      'imp.neg': imp[1],
+      'gerundio': conj.gerundio,
+      'participio': conj.participio
+    };
+    return map[formKey] || null;
   }
 
   function drawVerticalLabel(text, x, y, w, h) {
@@ -153,9 +199,11 @@
     ctx.save();
     const cx = x + w / 2;
     const cy = y + h / 2;
-    let fontSize = Math.min(18, (h * 0.82) / tokens.length);
+    const heightBased = (h * 0.8) / tokens.length;
+    const widthBased = w * 0.6;
+    let fontSize = Math.min(heightBased, widthBased);
     ctx.font = `${fontSize}px sans-serif`;
-    ctx.fillStyle = '#222';
+    ctx.fillStyle = '#000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const lineH = fontSize * 1.15;
@@ -188,284 +236,218 @@
     ctx.fillStyle = '#fafafa';
     ctx.fillRect(0, 0, width, height);
 
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.6;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
 
-    const x43 = width * 0.43;
-    ctx.beginPath(); ctx.moveTo(x43, 0); ctx.lineTo(x43, height); ctx.stroke();
+    const x43 = guides.x43(), y66 = guides.y66(), y33 = guides.y33();
+    const y16 = guides.y16(), y93 = guides.y93(), y60 = guides.y60(), y27 = guides.y27();
+    const x33 = guides.x33(), x39 = guides.x39(), x63 = guides.x63(), x53 = guides.x53();
+    const y495 = guides.y495();
 
-    const y66 = height * 0.66;
+    ctx.beginPath(); ctx.moveTo(x43, 0); ctx.lineTo(x43, y93); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, y66); ctx.lineTo(width, y66); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y33); ctx.lineTo(x53, y33); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x63, y33); ctx.lineTo(width, y33); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x33, y16); ctx.lineTo(x53, y16); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y93); ctx.lineTo(x43, y93); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x63, y93); ctx.lineTo(width, y93); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y60); ctx.lineTo(x33, y60); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x63, y60); ctx.lineTo(width, y60); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y27); ctx.lineTo(x33, y27); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x63, y27); ctx.lineTo(width, y27); ctx.stroke();
 
-    const y33 = height * 0.33;
-    ctx.beginPath(); ctx.moveTo(0, y33); ctx.lineTo(width * 0.53, y33); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(width * 0.63, y33); ctx.lineTo(width, y33); ctx.stroke();
-
-    const y16 = height * 0.16;
-    ctx.beginPath(); ctx.moveTo(width * 0.33, y16); ctx.lineTo(width * 0.53, y16); ctx.stroke();
-
-    const y93 = height * 0.93;
-    ctx.beginPath(); ctx.moveTo(0, y93); ctx.lineTo(width, y93); ctx.stroke();
-
-    const y60 = height * 0.60;
-    ctx.beginPath(); ctx.moveTo(0, y60); ctx.lineTo(width * 0.39, y60); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(width * 0.63, y60); ctx.lineTo(width, y60); ctx.stroke();
-
-    const y27 = height * 0.27;
-    ctx.beginPath(); ctx.moveTo(0, y27); ctx.lineTo(width * 0.33, y27); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(width * 0.63, y27); ctx.lineTo(width, y27); ctx.stroke();
-
-    ctx.setLineDash([5, 5]);
+    ctx.setLineDash(DASH_VERTICAL);
     ctx.lineWidth = 1.4;
-
-    const x33 = width * 0.33;
-    const x39 = width * 0.39;
-    const x63 = width * 0.63;
-
-    ctx.beginPath(); ctx.moveTo(x33, 0); ctx.lineTo(x33, y33); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x39, y33); ctx.lineTo(x39, y66); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x33, y66); ctx.lineTo(x33, y93); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x63, 0); ctx.lineTo(x63, y93); ctx.stroke();
-
-    const x53 = width * 0.53;
-    // Dotted above the blue button
+    ctx.beginPath(); ctx.moveTo(x33, 0); ctx.lineTo(x33, y93); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x63, 0); ctx.lineTo(x63, guides.yBot()); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x53, 0); ctx.lineTo(x53, y33); ctx.stroke();
-    
     ctx.setLineDash([]);
-    
     ctx.lineWidth = 1.2;
-
-    // Solid line along blue button's right edge
     ctx.beginPath(); ctx.moveTo(x53, y33); ctx.lineTo(x53, y66); ctx.stroke();
 
-    ctx.setLineDash([]);
-    ctx.lineWidth = 1.2;
+    // Blue button (top half)
+    const blue = layout.blueButton;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(blue.getX(), blue.getY(), blue.getWidth(), blue.getHeight());
 
- 
+    // Red button (bottom half)
+    const red = layout.redButton;
+    ctx.fillStyle = 'rgba(225, 30, 30, 1)';
+    ctx.fillRect(red.getX(), red.getY(), red.getWidth(), red.getHeight());
 
-    ctx.fillStyle = '#2196F3';
-    ctx.fillRect(width * 0.43, height * 0.33, width * 0.10, height * 0.33);
+    // Solid border for empty left cell (x43-x53, y66-yBot) and vertical cut
+    const emptyCell = layout.cells.find(c => c.text === '');
+    if (emptyCell) {
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.6;
+      const ex = emptyCell.rect.getX(), ey = emptyCell.rect.getY();
+      const ew = emptyCell.rect.getWidth(), eh = emptyCell.rect.getHeight();
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex + ew, ey);
+      ctx.lineTo(ex + ew, ey + eh);
+      ctx.lineTo(ex, ey + eh);
+      ctx.stroke();
 
-    const blocks = [
-      { x: 0, w: width * 0.33, y: 0, h: height * 0.27 },
-      { x: width * 0.63, w: width * 0.37, y: 0, h: height * 0.27 },
-      { x: 0, w: width * 0.39, y: height * 0.33, h: height * 0.27 },
-      { x: width * 0.63, w: width * 0.37, y: height * 0.33, h: height * 0.27 },
-      { x: 0, w: width * 0.33, y: height * 0.66, h: height * 0.27 },
-      { x: width * 0.63, w: width * 0.37, y: height * 0.66, h: height * 0.27 }
-    ];
-
-    blocks.forEach(block => {
-      const totalSegWidth = block.w * 0.80;
-      const gap = block.w * 0.05;
-      const halfLen = (totalSegWidth - gap) / 2;
-      const startX = block.x + (block.w - totalSegWidth) / 2;
-      const margin = height * 0.08;
-      const usable = block.h - 2 * margin;
-      const spacing = usable / 3;
-      const isLeftBlock = block.x < width * 0.5;
-      const isBlock10 = Math.abs(block.y - height * 0.33) < 2 && isLeftBlock;
-
-      for (let i = 0; i < 4; i++) {
-        const segY = block.y + margin + i * spacing;
-
-        if (isBlock10 && i === 2) {
-          ctx.beginPath(); ctx.moveTo(startX, segY); ctx.lineTo(startX + halfLen, segY); ctx.stroke();
-          const blockRight = block.x + block.w;
-          const innerStart = startX + halfLen + gap;
-          const vosEnd = blockRight - block.w * 0.05;
-          const available = vosEnd - innerStart;
-          const each = available * 0.42;
-          const tuStart = innerStart;
-          const tuEnd = tuStart + each;
-          const vosStart = tuEnd + available * 0.08;
-          ctx.beginPath(); ctx.moveTo(tuStart, segY); ctx.lineTo(tuEnd, segY); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(vosStart, segY); ctx.lineTo(vosEnd, segY); ctx.stroke();
-        } else {
-          const leftX = startX;
-          const rightX = startX + halfLen + gap;
-          if (isLeftBlock) {
-            if (i > 0) {
-              ctx.beginPath(); ctx.moveTo(leftX, segY); ctx.lineTo(leftX + halfLen, segY); ctx.stroke();
-            }
-            ctx.beginPath(); ctx.moveTo(rightX, segY); ctx.lineTo(rightX + halfLen, segY); ctx.stroke();
-          } else {
-            ctx.beginPath(); ctx.moveTo(leftX, segY); ctx.lineTo(leftX + halfLen, segY); ctx.stroke();
-            if (i > 0) {
-              ctx.beginPath(); ctx.moveTo(rightX, segY); ctx.lineTo(rightX + halfLen, segY); ctx.stroke();
-            }
+      // Display infinitivo stacked vertically
+      if (infinitivo) {
+        ctx.save();
+        let recognized = false;
+        try { recognized = !!getConjugaciones(infinitivo); } catch (e) { recognized = false; }
+        // Caution tape background for unrecognized
+        if (!recognized) {
+          const ex = emptyCell.rect.getX(), ey = emptyCell.rect.getY();
+          const ew = emptyCell.rect.getWidth(), eh = emptyCell.rect.getHeight();
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(ex, ey, ew, eh);
+          ctx.clip();
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+          ctx.lineWidth = 5;
+          const spacing = 16;
+          const diag = Math.sqrt(ew * ew + eh * eh);
+          for (let i = -diag; i < diag * 2; i += spacing) {
+            ctx.beginPath();
+            ctx.moveTo(ex + i, ey);
+            ctx.lineTo(ex + i - eh, ey + eh);
+            ctx.stroke();
           }
+          ctx.restore();
         }
+        ctx.fillStyle = recognized ? 'rgba(225, 30, 30, 1)' : 'rgba(0, 0, 0, 0.35)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const fontSize = Math.max(18, height * 0.03);
+        const letters = infinitivo.toUpperCase().split('');
+        const available = emptyCell.rect.getHeight() * 0.9;
+        const naturalLineH = fontSize * 1.2;
+        const naturalH = letters.length * naturalLineH;
+        const vScale = Math.min(1, available / naturalH);
+        const lineH = naturalLineH * vScale;
+        ctx.font = `bold ${fontSize}px "Times New Roman", Georgia, serif`;
+        const ew = emptyCell.rect.getWidth();
+        const availableW = ew * 0.85;
+        const naturalLetterW = fontSize * 1.1;
+        const hScale = Math.min(1.8, availableW / naturalLetterW);
+        const cx = emptyCell.rect.getX() + ew / 2;
+        const cy = emptyCell.rect.getY() + emptyCell.rect.getHeight() / 2;
+        const totalH = letters.length * lineH;
+        let ty = cy - totalH / 2 + lineH / 2;
+        letters.forEach(ch => {
+          ctx.save();
+          ctx.translate(cx, ty);
+          ctx.scale(hScale, vScale);
+          ctx.fillText(ch, 0, 0);
+          ctx.restore();
+          ty += lineH;
+        });
+        ctx.restore();
       }
+    }
+
+    // Random button (die face)
+    const randBtn = layout.randomButton;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(randBtn.getX(), randBtn.getY());
+    ctx.lineTo(randBtn.getX() + randBtn.getWidth(), randBtn.getY());
+    ctx.moveTo(randBtn.getX(), randBtn.getY() + randBtn.getHeight());
+    ctx.lineTo(randBtn.getX() + randBtn.getWidth(), randBtn.getY() + randBtn.getHeight());
+    ctx.stroke();
+    // Draw a die face (5 dots)
+    const dieSize = Math.min(randBtn.getWidth(), randBtn.getHeight()) * 0.55;
+    const dieX = randBtn.getX() + (randBtn.getWidth() - dieSize) / 2;
+    const dieY = randBtn.getY() + (randBtn.getHeight() - dieSize) / 2;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(dieX, dieY, dieSize, dieSize);
+    // 5 dots
+    const dotR = dieSize * 0.08;
+    const positions = [
+      [0.25, 0.25], [0.75, 0.25],
+      [0.5, 0.5],
+      [0.25, 0.75], [0.75, 0.75]
+    ];
+    ctx.fillStyle = '#000';
+    positions.forEach(([px, py]) => {
+      ctx.beginPath();
+      ctx.arc(dieX + px * dieSize, dieY + py * dieSize, dotR, 0, Math.PI * 2);
+      ctx.fill();
     });
 
-    const cells = [
-      { text: '3',     x: width * 0.33, y: 0,             w: width * 0.10, h: height * 0.16 },
-      { text: '2.5',   x: width * 0.33, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
-      { text: '2',     x: width * 0.39, y: height * 0.33, w: width * 0.04, h: height * 0.33 },
-      { text: '1',     x: width * 0.33, y: height * 0.66, w: width * 0.10, h: height * 0.27 },
-      { text: '{3 3}',         x: width * 0.43, y: 0,             w: width * 0.10, h: height * 0.16 },
-      { text: '{2.5 [2 2.5 3]}', x: width * 0.43, y: height * 0.16, w: width * 0.10, h: height * 0.17 },
-      { text: '{2 [2 3]}', x: width * 0.53, y: 0,             w: width * 0.10, h: height * 0.66 },
-      { text: '{1 [2 2.5 3]}', x: width * 0.43, y: height * 0.66, w: width * 0.20, h: height * 0.27 }
-    ];
-    cells.forEach(cell => drawVerticalLabel(cell.text, cell.x, cell.y, cell.w, cell.h));
+    // Block separator lines (4 per block, single column)
+    layout.blocks.forEach((block, idx) => {
+      const bx = block.getX(), bw = block.getWidth();
+      const by = block.getY(), bh = block.getHeight();
+      const isMiddleBlock = idx === 2 || idx === 3;
+      const lineYs = isMiddleBlock
+        ? [2/10, 4/10, 6/10, 8/10].map(p => by + bh * p)
+        : [2/9, 4/9, 5/9, 7/9].map(p => by + bh * p);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.2;
+      lineYs.forEach((ly, i) => {
+        ctx.setLineDash([]);
+        const isShort = i === 1 || i === 2;
+        const startPct = isShort ? 0.367 : 0.1;
+        const endPct = isShort ? 0.633 : 0.9;
+        ctx.beginPath();
+        ctx.moveTo(bx + bw * startPct, ly);
+        ctx.lineTo(bx + bw * endPct, ly);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    });
 
+    // Central labels
+    layout.cells.forEach(cell => {
+      drawVerticalLabel(cell.text, cell.rect.getX(), cell.rect.getY(), cell.rect.getWidth(), cell.rect.getHeight());
+    });
 
-      
-    // Expanded red button (33% to 63%, bottom strip)
-    ctx.fillStyle = 'rgba(255, 30, 30, 1)';
-    ctx.fillRect(width * 0.33, height * 0.93, width * 0.30, height * 0.07);
-
-      //======================
-      // Two pyramids: J's then O's, centered in the expanded button
-      ctx.save();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      const btnCenterX = width * 0.48;
-      const btnCenterY = height * 0.965;
-      const letterSpacing = width * 0.02;
-      const rowSpacing = height * 0.016;
-      const baseFontSize = Math.max(13, height * 0.02);
-      const topFontSize = baseFontSize * 1.2;
-
-      // J pyramid (left)
-      const jBaseX = btnCenterX - letterSpacing * 2.2;
-
-      // Top J — bigger and stretched 50% widthwise
-      ctx.save();
-      var useserif = true;
-      ctx.font = `bold ${topFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
-      ctx.translate(jBaseX, btnCenterY - rowSpacing * 0.6);
-      ctx.scale(1.9, 1);
-      ctx.fillText('J', 0, 0);
-      ctx.restore();
-
-      // Bottom J's
-      ctx.font = `bold ${baseFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
-      ctx.fillText('J', jBaseX - letterSpacing * 1, btnCenterY + rowSpacing * 0.6);
-      ctx.fillText('J', jBaseX + letterSpacing * 0.7, btnCenterY + rowSpacing * 0.6);
-
-      
-      // Period between the pyramids, bottom tip on the baseline
-      /*
-      ctx.save();
-      ctx.font = `bold ${topFontSize}px "Times New Roman", Georgia, serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      const baselineY = btnCenterY + rowSpacing * 0.35 + baseFontSize * 0.35;
-      ctx.fillText('.', btnCenterX, baselineY);
-      ctx.restore();
-       */
-      
-      
-      // O pyramid (right)
-      const oBaseX = btnCenterX + letterSpacing * 2.2;
-
-      // Top O — bigger and stretched 50% widthwise
-      ctx.save();
-      ctx.font = `bold ${topFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
-      ctx.translate(oBaseX, btnCenterY - rowSpacing * 0.6);
-      ctx.scale(1.7, 1);
-      ctx.fillText('O', 0, 0);
-      ctx.restore();
-
-      // Bottom O's
-      ctx.font = `bold ${baseFontSize}px ` + (useserif ?  `"Times New Roman", Georgia, serif`:`  sans-serif`);
-      ctx.fillText('O', oBaseX - letterSpacing * 0.7, btnCenterY + rowSpacing * 0.6);
-      ctx.fillText('O', oBaseX + letterSpacing * 0.7, btnCenterY + rowSpacing * 0.6);
-
-      ctx.restore();
-      
-      //==================
-      // Pyramids stacked in the blue button
-      ctx.save();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      const blueCenterX = width * 0.48;
-      const blueCenterY = height * 0.495;
-      const blueLetterSpacing = width * 0.022;
-      const blueRowSpacing = height * 0.027;
-      const blueBaseFont = Math.max(14, height * 0.0215);
-      const blueTopFont = blueBaseFont * 1.2;
-
-      // J pyramid (top)
-      const jTopY = blueCenterY - height * 0.04;
-
-      ctx.save();
-      ctx.font = `bold ${blueTopFont}px "Times New Roman", Georgia, serif`;
-      ctx.translate(blueCenterX, jTopY - blueRowSpacing * 0.35);
-      ctx.scale(1.9, 1);
-      ctx.fillText('J', 0, 0);
-      ctx.restore();
-
-      ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
-      ctx.fillText('J', blueCenterX - blueLetterSpacing * 1, jTopY + blueRowSpacing * 0.35);
-      ctx.fillText('J', blueCenterX + blueLetterSpacing * 0.7, jTopY + blueRowSpacing * 0.35);
-
-      // Period between
-      /*
-      ctx.save();
-      ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
-      ctx.textBaseline = 'alphabetic';
-      const blueBaselineY = jTopY + blueRowSpacing * 0.35 + blueBaseFont * 0.35;
-      ctx.fillText('.', blueCenterX, blueBaselineY + height * 0.02);
-      ctx.restore();
-       */
-
-      // O pyramid (bottom)
-      const oTopY = blueCenterY + height * 0.04;
-
-      ctx.save();
-      ctx.font = `bold ${blueTopFont}px "Times New Roman", Georgia, serif`;
-      ctx.translate(blueCenterX, oTopY - blueRowSpacing * 0.35);
-      ctx.scale(1.5, 1);
-      ctx.fillText('O', 0, 0);
-      ctx.restore();
-
-      ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
-      ctx.fillText('O', blueCenterX - blueLetterSpacing * 0.7, oTopY + blueRowSpacing * 0.35);
-      ctx.fillText('O', blueCenterX + blueLetterSpacing * 0.7, oTopY + blueRowSpacing * 0.35);
-
-      ctx.restore();
-      //=======================
-      /*
-    // Three-line text centered in the expanded button
+    // J pyramid in blue (top half), O pyramid in red (bottom half)
+    // Positions relative to the combined rectangle (center at y495)
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.60)';
-    ctx.font = `${Math.max(11, height * 0.015)}px serif`;
-      ctx.font = `${Math.max(11, height * 0.016)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const btnCenterX = width * 0.48;
-      const btnCenterY = height * 0.965;
-      ctx.fillText('Un paso en el camino.', btnCenterX, btnCenterY - height * 0.012);
-      ctx.fillText('JJJ.ooo', btnCenterX, btnCenterY + height * 0.012);
-      ctx.restore();
-      
-      */
-      /*
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const btnCenterX = width * 0.48;
-    const btnCenterY = height * 0.965;
-    const lineSpacing = height * 0.016;
-    ctx.fillText('Un paso', btnCenterX, btnCenterY - lineSpacing);
-    ctx.fillText('en el camino.', btnCenterX, btnCenterY);
-    ctx.fillText('jjj.ooo', btnCenterX, btnCenterY + lineSpacing);
+    const comboCenterX = width * 0.48;
+    const comboCenterY = height * 0.495;
+    const blueLetterSpacing = width * 0.028;
+    const blueRowSpacing = height * 0.035;
+    const blueBaseFont = Math.min(width * 0.045, height * 0.028);
+    const blueTopFont = blueBaseFont * 1.2;
+
+    // J pyramid (above center, in blue)
+    const jTopY = comboCenterY - height * 0.04;
+    ctx.save();
+    ctx.font = `bold ${blueTopFont}px "Times New Roman", Georgia, serif`;
+    ctx.translate(comboCenterX, jTopY - blueRowSpacing * 0.35);
+    ctx.scale(1.9, 1);
+    ctx.fillText('J', 0, 0);
     ctx.restore();
-*/
-    
-    // Build render list from the manager
-    const verb = input.value.trim();
+    ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
+    ctx.fillText('J', comboCenterX - blueLetterSpacing * 1, jTopY + blueRowSpacing * 0.35);
+    ctx.fillText('J', comboCenterX + blueLetterSpacing * 0.7, jTopY + blueRowSpacing * 0.35);
+
+    // O pyramid (below center, in red)
+    const oTopY = comboCenterY + height * 0.04;
+    ctx.save();
+    ctx.font = `bold ${blueTopFont}px "Times New Roman", Georgia, serif`;
+    ctx.translate(comboCenterX, oTopY - blueRowSpacing * 0.35);
+    ctx.scale(1.5, 1);
+    ctx.fillText('O', 0, 0);
+    ctx.restore();
+    ctx.font = `bold ${blueBaseFont}px "Times New Roman", Georgia, serif`;
+    ctx.fillText('O', comboCenterX - blueLetterSpacing * 0.7, oTopY + blueRowSpacing * 0.35);
+    ctx.fillText('O', comboCenterX + blueLetterSpacing * 0.7, oTopY + blueRowSpacing * 0.35);
+    ctx.restore();
+
+    // Field texts
+    const verb = infinitivo;
     const conj = getConjugaciones(verb);
 
     textFieldManager.used.forEach(field => {
@@ -473,111 +455,102 @@
       if (!str) return;
       const { blockRow, blockCol, intraRow, intraCol, underType } = field;
       const isLeft = blockCol === 0;
-      const isMiddleLeft = blockRow === 1 && blockCol === 0;
-      const bx = isLeft ? 0 : width * 0.63;
-      const bw = isMiddleLeft ? width * 0.39 : (isLeft ? width * 0.33 : width * 0.37);
-      const by = blockRow === 0 ? 0 : blockRow === 1 ? height * 0.33 : height * 0.66;
-      const bh = height * 0.27;
+      const blockIdx = blockRow * 2 + blockCol;
+      const block = layout.blocks[blockIdx];
+      const bx = block.getX();
+      const bw = block.getWidth();
+      const by = block.getY();
+      const bh = block.getHeight();
 
       let fieldX, fieldY, fieldW, fieldH;
       let highlightX, highlightY, highlightW, highlightH;
 
       if (underType || intraRow === undefined) {
-        const underTops = [height * 0.27, height * 0.60, height * 0.93];
-        const underBots = [height * 0.33, height * 0.66, height];
-        fieldY = underTops[blockRow] || height * 0.93;
-        fieldH = (underBots[blockRow] || height) - fieldY;
+        const underTops = [height * (9/35), height * (21/35), height * (33/35)];
+        const underBots = [height * (11/35), height * (23.65/35), height];
+        const underTop = underTops[blockRow] || height * 0.93;
+        const underH = (underBots[blockRow] || height) - underTop;
+        const halfH = underH / 2;
+        const isBlock10 = blockRow === 1 && blockCol === 0;
+        const isBlock20 = blockRow === 2 && blockCol === 0;
 
-        if (underType === 'neg' && blockRow === 1 && blockCol === 0) {
-          fieldX = bx; fieldW = bw / 3;
-        } else if (underType === 'tuAff') {
-          fieldX = bx + bw / 3; fieldW = bw / 3;
-        } else if (underType === 'vosAff') {
-          fieldX = bx + 2 * bw / 3; fieldW = bw / 3;
-        } else if (underType === 'gerundio') {
-          fieldX = bx + bw / 2; fieldW = bw / 2;
-        } else if (underType === 'participio') {
-          fieldX = bx; fieldW = bw / 2;
-        } else if (underType === 'aff' || underType === 'neg') {
-          const half = bw / 2;
-          const onLeft = (underType === 'neg' && isLeft) || (underType === 'aff' && !isLeft);
-          fieldX = onLeft ? bx : bx + half;
-          fieldW = half;
+        if (isBlock20) {
+          // gerundio top, participio bottom
+          fieldX = bx; fieldW = bw;
+          fieldY = underType === 'gerundio' ? underTop : underTop + halfH;
+          fieldH = halfH;
+        } else if (isBlock10) {
+          // 3 stacked: aff, aff vos, neg
+          const thirdH = underH / 3;
+          const slotMap = { 'tuAff': 0, 'vosAff': 1, 'neg': 2 };
+          const slot = slotMap[underType] ?? 0;
+          fieldX = bx; fieldW = bw;
+          fieldY = underTop + slot * thirdH;
+          fieldH = thirdH;
+        } else if (underType === 'aff') {
+          // afirmativo full width on top
+          fieldX = bx; fieldW = bw;
+          fieldY = underTop;
+          fieldH = halfH;
+        } else if (underType === 'neg') {
+          // negativo full width on bottom
+          fieldX = bx; fieldW = bw;
+          fieldY = underTop + halfH;
+          fieldH = halfH;
         } else {
           fieldX = bx; fieldW = bw;
+          fieldY = underTop;
+          fieldH = underH;
         }
-        highlightX = fieldX;
-        highlightY = fieldY;
-        highlightW = fieldW;
-        highlightH = fieldH;
+        highlightX = fieldX; highlightY = fieldY; highlightW = fieldW; highlightH = fieldH;
       } else {
-        const margin = height * 0.08;
-        const usable = bh - 2 * margin;
-        const spacing = usable / 3;
-        const segYs = [0, 1, 2, 3].map(i => by + margin + i * spacing);
-        const gaps = [
-          { top: by, bottom: segYs[0] },
-          { top: segYs[0], bottom: segYs[1] },
-          { top: segYs[1], bottom: segYs[2] },
-          { top: segYs[2], bottom: segYs[3] },
-          { top: segYs[3], bottom: by + bh }
+        const isBlock10 = blockRow === 1 && blockCol === 0;
+        const isMiddleBlock = blockRow === 1;
+        const lineYs = isMiddleBlock
+          ? [2/10, 4/10, 6/10, 8/10].map(p => by + bh * p)
+          : [2/9, 4/9, 5/9, 7/9].map(p => by + bh * p);
+        const zones = [
+          { top: by, bottom: lineYs[0] },
+          { top: lineYs[0], bottom: lineYs[1] },
+          { top: lineYs[1], bottom: lineYs[2] },
+          { top: lineYs[2], bottom: lineYs[3] },
+          { top: lineYs[3], bottom: by + bh }
         ];
-        const gap = gaps[Math.max(0, Math.min(4, intraRow))];
-
-        const totalSegWidth = bw * 0.80;
-        const segGap = bw * 0.05;
-        const halfLen = (totalSegWidth - segGap) / 2;
-        const startX = bx + (bw - totalSegWidth) / 2;
-
-        if (isMiddleLeft && intraRow === 2 && (intraCol === 0 || intraCol === 2)) {
-          const blockRight = bx + bw;
-          const innerStart = startX + halfLen + segGap;
-          const vosEnd = blockRight - bw * 0.05;
-          const available = vosEnd - innerStart;
-          const each = available * 0.42;
-          const tuStart = innerStart;
-          const tuEnd = tuStart + each;
-          const vosStart = tuEnd + available * 0.08;
-          if (intraCol === 0) { fieldX = tuStart; fieldW = tuEnd - tuStart; }
-          else { fieldX = vosStart; fieldW = vosEnd - vosStart; }
-        } else if (isLeft) {
-          fieldX = intraCol === 0 ? startX + halfLen + segGap : startX;
-          fieldW = halfLen;
+        const zoneMap = {
+          'sub.futuro': [0, 0], 'sub.presente': [0, 1],
+          'ind.condicional': [1, 0], 'ind.futuro': [1, 1],
+          'ind.presente': [2, 0], 'ind.presente.vos': [2, 1],
+          'ind.imperfecto': [3, 0], 'ind.preterito': [3, 1],
+          'sub.ra': [4, 0], 'sub.se': [4, 1]
+        };
+        const [zoneIdx, slot] = zoneMap[field.formKey] || [2, 0];
+        const zone = zones[zoneIdx];
+        const isSingleField = zoneIdx === 2 && !(blockRow === 1 && blockCol === 0);
+        if (isSingleField) {
+          fieldX = bx;
+          fieldW = bw;
+          fieldY = zone.top;
+          fieldH = zone.bottom - zone.top;
         } else {
-          fieldX = intraCol === 0 ? startX : startX + halfLen + segGap;
-          fieldW = halfLen;
+          const slotH = (zone.bottom - zone.top) / 2;
+          fieldX = bx;
+          fieldW = bw;
+          fieldY = zone.top + slot * slotH;
+          fieldH = slotH;
         }
-        fieldY = gap.top;
-        fieldH = gap.bottom - gap.top;
-
-        highlightX = fieldX;
-        highlightY = fieldY;
-        highlightW = fieldW;
-        highlightH = fieldH;
-
-        if (intraRow === 0 || intraRow === 4) {
-          if (intraRow === 0) {
-            highlightY = segYs[0] - spacing;
-            highlightH = spacing;
-          } else {
-            highlightY = segYs[3];
-            highlightH = spacing;
-          }
-        }
-
-        const halfGap = spacing / 2;
-        if (intraRow === 0) fieldY = (segYs[0] - halfGap) - fieldH / 2;
-        else if (intraRow === 4) fieldY = (segYs[3] + halfGap) - fieldH / 2;
+        highlightX = fieldX; highlightY = fieldY; highlightW = fieldW; highlightH = fieldH;
       }
 
-      // Highlight if valid infinitivo and text is not a black square
+      let showStrikethrough = false;
       if (conj && str !== '⬛') {
-        const expected = expectedText(field, conj);
-        if (expected) {
-          const match = str.toLowerCase() === expected.toLowerCase();
-          ctx.fillStyle = match ? 'rgba(76,175,80,0.35)' : 'rgba(244,67,54,0.35)';
-          ctx.fillRect(highlightX, highlightY, highlightW, highlightH);
+        let isCorrect = false;
+        try {
+          const expected = expectedText(field, conj);
+          if (expected && str.toLowerCase() === expected.toLowerCase()) isCorrect = true;
+        } catch (e) {
+          isCorrect = false;
         }
+        if (!isCorrect) showStrikethrough = true;
       }
 
       const pad = 0.12;
@@ -594,102 +567,92 @@
         metrics = ctx.measureText(str);
       }
 
-      ctx.fillStyle = '#222';
+      ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      let cy = fieldY + fieldH / 2;
-      if (intraRow === 0) {
-        const margin = height * 0.08;
-        const spacing = (bh - 2 * margin) / 3;
-        cy = (by + margin) - spacing / 2;
-      } else if (intraRow === 4) {
-        const margin = height * 0.08;
-        const spacing = (bh - 2 * margin) / 3;
-        cy = (by + margin + 3 * spacing) + spacing / 2;
-      }
+      const cy = fieldY + fieldH / 2;
       ctx.fillText(str, fieldX + fieldW / 2, cy);
+      if (showStrikethrough) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(244, 67, 54, 0.4)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(highlightX, highlightY);
+        ctx.lineTo(highlightX + highlightW, highlightY + highlightH);
+        ctx.moveTo(highlightX + highlightW, highlightY);
+        ctx.lineTo(highlightX, highlightY + highlightH);
+        ctx.stroke();
+        ctx.restore();
+      }
     });
   }
 
-  function positionVerbInput() {
-    input.style.left = '1%';
-    input.style.top = '93.5%';
-    input.style.width = '31%';
-    input.style.height = '5.5%';
-    input.style.display = 'block';
-    stage.style.width = canvas.width + 'px';
-    stage.style.height = canvas.height + 'px';
-  }
+
 
   function getFieldBounds(field) {
     const w = canvas.width, h = canvas.height;
     const isLeft = field.blockCol === 0;
-    const isMiddleLeft = field.blockRow === 1 && field.blockCol === 0;
-    const bx = isLeft ? 0 : w * 0.63;
-    const bw = isMiddleLeft ? w * 0.39 : (isLeft ? w * 0.33 : w * 0.37);
-    const by = field.blockRow === 0 ? 0 : field.blockRow === 1 ? h * 0.33 : h * 0.66;
-    const bh = h * 0.27;
+    const blockIdx = field.blockRow * 2 + field.blockCol;
+    const block = layout.blocks[blockIdx];
+    const bx = block.getX();
+    const bw = block.getWidth();
+    const by = block.getY();
+    const bh = block.getHeight();
 
     if (field.intraRow === undefined) {
-      const underTops = [h * 0.27, h * 0.60, h * 0.93];
-      const underBots = [h * 0.33, h * 0.66, h];
-      const fy = underTops[field.blockRow] || h * 0.93;
-      const fh = (underBots[field.blockRow] || h) - fy;
-      if (field.underType === 'neg' && field.blockRow === 1 && field.blockCol === 0) return { x: bx, y: fy, w: bw / 3, h: fh };
-      if (field.underType === 'tuAff') return { x: bx + bw / 3, y: fy, w: bw / 3, h: fh };
-      if (field.underType === 'vosAff') return { x: bx + 2 * bw / 3, y: fy, w: bw / 3, h: fh };
-      if (field.underType === 'gerundio') return { x: bx + bw / 2, y: fy, w: bw / 2, h: fh };
-      if (field.underType === 'participio') return { x: bx, y: fy, w: bw / 2, h: fh };
-      if (field.underType === 'aff' || field.underType === 'neg') {
-        const half = bw / 2;
-        const onLeft = (field.underType === 'neg' && isLeft) || (field.underType === 'aff' && !isLeft);
-        return { x: onLeft ? bx : bx + half, y: fy, w: half, h: fh };
+      const underTops = [h * (9/35), h * (21/35), h * (33/35)];
+      const underBots = [h * (11/35), h * (23.65/35), h];
+      const underTop = underTops[field.blockRow] || h * 0.93;
+      const underH = (underBots[field.blockRow] || h) - underTop;
+      const halfH = underH / 2;
+      const isBlock10 = field.blockRow === 1 && field.blockCol === 0;
+      const isBlock20 = field.blockRow === 2 && field.blockCol === 0;
+
+      if (isBlock20) {
+        return { x: bx, y: field.underType === 'gerundio' ? underTop : underTop + halfH, w: bw, h: halfH };
       }
-      return { x: bx, y: fy, w: bw, h: fh };
+      if (isBlock10) {
+        const thirdH = underH / 3;
+        const slotMap = { 'tuAff': 0, 'vosAff': 1, 'neg': 2 };
+        const slot = slotMap[field.underType] ?? 0;
+        return { x: bx, y: underTop + slot * thirdH, w: bw, h: thirdH };
+      }
+      if (field.underType === 'aff') {
+        return { x: bx, y: underTop, w: bw, h: halfH };
+      }
+      if (field.underType === 'neg') {
+        return { x: bx, y: underTop + halfH, w: bw, h: halfH };
+      }
+      return { x: bx, y: underTop, w: bw, h: underH };
     }
 
-    const margin = h * 0.08;
-    const usable = bh - 2 * margin;
-    const spacing = usable / 3;
-    const segYs = [0, 1, 2, 3].map(i => by + margin + i * spacing);
-    const gaps = [
-      { top: by, bottom: segYs[0] },
-      { top: segYs[0], bottom: segYs[1] },
-      { top: segYs[1], bottom: segYs[2] },
-      { top: segYs[2], bottom: segYs[3] },
-      { top: segYs[3], bottom: by + bh }
+    const isBlock10 = field.blockRow === 1 && field.blockCol === 0;
+    const isMiddleBlock = field.blockRow === 1;
+    const lineYs = isMiddleBlock
+      ? [2/10, 4/10, 6/10, 8/10].map(p => by + bh * p)
+      : [2/9, 4/9, 5/9, 7/9].map(p => by + bh * p);
+    const zones = [
+      { top: by, bottom: lineYs[0] },
+      { top: lineYs[0], bottom: lineYs[1] },
+      { top: lineYs[1], bottom: lineYs[2] },
+      { top: lineYs[2], bottom: lineYs[3] },
+      { top: lineYs[3], bottom: by + bh }
     ];
-    const gap = gaps[Math.max(0, Math.min(4, field.intraRow))] || gaps[2];
-
-    if (isMiddleLeft && field.intraRow === 2 && (field.intraCol === 0 || field.intraCol === 2)) {
-      const totalSegWidth = bw * 0.80;
-      const segGap = bw * 0.05;
-      const halfLen = (totalSegWidth - segGap) / 2;
-      const startX = bx + (bw - totalSegWidth) / 2;
-      const innerStart = startX + halfLen + segGap;
-      const vosEnd = bx + bw - bw * 0.05;
-      const available = vosEnd - innerStart;
-      const each = available * 0.42;
-      const tuStart = innerStart;
-      const tuEnd = tuStart + each;
-      const vosStart = tuEnd + available * 0.08;
-      if (field.intraCol === 0) return { x: tuStart, y: gap.top, w: tuEnd - tuStart, h: gap.bottom - gap.top };
-      return { x: vosStart, y: gap.top, w: vosEnd - vosStart, h: gap.bottom - gap.top };
+    const zoneMap = {
+      'sub.futuro': [0, 0], 'sub.presente': [0, 1],
+      'ind.condicional': [1, 0], 'ind.futuro': [1, 1],
+      'ind.presente': [2, 0], 'ind.presente.vos': [2, 1],
+      'ind.imperfecto': [3, 0], 'ind.preterito': [3, 1],
+      'sub.ra': [4, 0], 'sub.se': [4, 1]
+    };
+    const [zoneIdx, slot] = zoneMap[field.formKey] || [2, 0];
+    const zone = zones[zoneIdx];
+    const isSingleField = zoneIdx === 2 && !(blockRow === 1 && blockCol === 0);
+    if (isSingleField) {
+      return { x: bx, y: zone.top, w: bw, h: zone.bottom - zone.top };
     }
-
-    const totalSegWidth = bw * 0.80;
-    const segGap = bw * 0.05;
-    const halfLen = (totalSegWidth - segGap) / 2;
-    const startX = bx + (bw - totalSegWidth) / 2;
-    let colX, colW;
-    if (isLeft) {
-      colX = field.intraCol === 0 ? startX + halfLen + segGap : startX;
-      colW = halfLen;
-    } else {
-      colX = field.intraCol === 0 ? startX : startX + halfLen + segGap;
-      colW = halfLen;
-    }
-    return { x: colX, y: gap.top, w: colW, h: gap.bottom - gap.top };
+    const slotH = (zone.bottom - zone.top) / 2;
+    return { x: bx, y: zone.top + slot * slotH, w: bw, h: slotH };
   }
 
   function findGivenFieldAt(px, py) {
@@ -701,7 +664,7 @@
   }
 
   function fillAllWithAnswers() {
-    const verb = input.value.trim();
+    const verb = infinitivo;
     const conj = getConjugaciones(verb);
     if (!conj) return;
     while (textFieldManager.available.length > 0) {
@@ -712,22 +675,66 @@
     }
   }
 
-  input.addEventListener('input', () => draw());
+  
+
+  function setInfinitivo(value) {
+    try {
+      infinitivo = (value || '').trim();
+      draw();
+    } catch (err) {
+      alert('Error: ' + (err.message || err));
+    }
+  }
+
+  const RANDOM_INFINITIVOS = [
+    'abrir','acertar','actuar','adeudar','adquirir','agradecer','aguar','ahincar',
+    'aislar','andar','anunciar','aplaudir','argüir','asir','aunar','avergonzar',
+    'averiguar','bailar','balbucir','bendecir','caber','cabrahigar','caer','causar',
+    'ceñir','coger','cohibir','colgar','conducir','construir','contar','corregir',
+    'corroer','creer','dar','decir','delinquir','descafeinar','desdar','desosar',
+    'dirigir','discernir','distinguir','dormir','embaír','engorar','enraizar','enviar',
+    'erguir','errar','escribir','estar','forzar','haber','hablar','hacer','huir',
+    'ir','jugar','leer','lucir','mover','mullir','nacer','oír','oler','pagar',
+    'partir','pedir','peinar','placer','poder','poner','predecir','prohibir',
+    'prohijar','pudrir','querer','raer','regar','rehacer','rehenchir','rehuir',
+    'rehusar','responder','reunir','rever','reír','roer','romper','rozar','saber',
+    'sacar','salir','seguir','sentir','ser','servir','sonreír','tañer','temer',
+    'tender','tener','torcer','traer','tropezar','vaciar','valer','vencer','venir',
+    'ver','volcar','volver','yacer','zurcir'
+  ];
+
+  function pickRandomInfinitivo() {
+    const idx = Math.floor(Math.random() * RANDOM_INFINITIVOS.length);
+    setInfinitivo(RANDOM_INFINITIVOS[idx]);
+  }
 
   canvas.addEventListener('click', (e) => {
+    try {
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    const w = canvas.width;
-    const h = canvas.height;
 
-    // Red button
-    if (x >= w * 0.33 && x <= w * 0.63 && y >= h * 0.93 && y <= h ) {
+    // Random button
+    if (layout.randomButton.containsPoint(x, y)) {
+      pickRandomInfinitivo();
+      return;
+    }
+
+    // Infinitivo cell (empty cell left of {1 [2 2.5 3]})
+    const infinitivoCell = layout.cells.find(c => c.text === '');
+    if (infinitivoCell && infinitivoCell.rect.containsPoint(x, y)) {
+      const entered = prompt('Introduce infinitivo del verbo:', infinitivo);
+      if (entered === null) return;
+      setInfinitivo(entered);
+      return;
+    }
+
+    if (layout.redButton.containsPoint(x, y)) {
       const hatFull = textFieldManager.used.length === 0;
       if (hatFull) {
-        const conj = getConjugaciones(input.value.trim());
+        const conj = getConjugaciones(infinitivo);
         if (!conj) return;
-        if (!confirm(`¿Mostrar todas las conjugaciones del verbo ${input.value.trim()}??`)) return;
+        if (!confirm(`¿Mostrar todas las conjugaciones del verbo ${infinitivo}??`)) return;
         fillAllWithAnswers();
       } else {
         if (!confirm('¿Reiniciar? Se borrarán todos los campos y su texto.')) return;
@@ -737,73 +744,31 @@
       return;
     }
 
-    // Blue button
-    if (x >= w * 0.43 && x <= w * 0.53 && y >= h * 0.33 && y <= h * 0.66) {
+    if (layout.blueButton.containsPoint(x, y)) {
       const field = textFieldManager.next();
       if (!field) return;
       draw();
       return;
     }
 
-      function fieldLabel(field) {
-        const { blockRow: r, blockCol: c, intraRow: ir, intraCol: ic, underType } = field;
-
-        // Under fields
-        if (underType) {
-          if (underType === 'gerundio') return 'gerundio';
-          if (underType === 'participio') return 'participio';
-          if (underType === 'vosAff') return 'imperativo afirmativo (vos)';
-          if (underType === 'tuAff') return 'imperativo afirmativo (tú)';
-          if (underType === 'neg' && r === 1 && c === 0) return 'imperativo negativo (tú)';
-          if (underType === 'aff') {
-            if (r === 0 && c === 0) return 'imperativo afirmativo (usted)';
-            if (r === 0 && c === 1) return 'imperativo afirmativo (ustedes)';
-            if (r === 1 && c === 1) return 'imperativo afirmativo (vosotros)';
-          }
-          if (underType === 'neg') {
-            if (r === 0 && c === 0) return 'imperativo negativo (usted)';
-            if (r === 0 && c === 1) return 'imperativo negativo (ustedes)';
-            if (r === 1 && c === 1) return 'imperativo negativo (vosotros)';
-          }
-          return 'imperativo';
-        }
-
-        // Intra-block
-        const personMap = {
-          '0,0': 'él/ella/usted', '1,0': 'tú', '2,0': 'yo',
-          '0,1': 'ellos/ellas/ustedes', '1,1': 'vosotros', '2,1': 'nosotros'
-        };
-        const person = personMap[`${r},${c}`];
-        const tenses = ['condicional', 'futuro', 'presente', 'imperfecto', 'pretérito'];
-        const tense = tenses[ir] || '';
-        const mood = ic === 0 ? 'indicativo' : 'subjuntivo';
-
-        // Vos special case: block_10, present, intraCol 2
-        if (r === 1 && c === 0 && ir === 2 && ic === 2) {
-          return 'presente indicativo (vos)';
-        }
-
-        return `${tense} ${mood} (${person})`;
-      }
-      
-    // Tap drawn field → prompt
-      const hit = findGivenFieldAt(x, y);
-      if (hit) {
-        const current = hit.text === '⬛' ? '' : hit.text;
-        const label = "";//current?(" - " + fieldLabel(hit)):"";
-        const entered = prompt(`Introduce la conjugación${label}:`, current);
-        if (entered === null) return;
-        const newText = entered.trim() || '⬛';
-        textFieldManager.setText(hit, newText);
-        draw();
-      }
+    const hit = findGivenFieldAt(x, y);
+    if (hit) {
+      const current = hit.text === '⬛' ? '' : hit.text;
+      const entered = prompt('Introduce la conjugación:', current);
+      if (entered === null) return;
+      const newText = entered.trim() || '⬛';
+      textFieldManager.setText(hit, newText);
+      draw();
+    }
+    } catch (err) {
+      alert('Error: ' + (err.message || err));
+    }
   });
 
   window.addEventListener('resize', () => {
     draw();
-    positionVerbInput();
+    
   });
 
   draw();
-  setTimeout(positionVerbInput, 100);
 })();
