@@ -30,6 +30,21 @@
   const DASH_VERTICAL = [2, 5];
   const DASH_HORIZONTAL = [2, 3];
 
+  const POS_STANDARD = {
+    'sub.futuro': [0, 1/9], 'sub.presente': [1/9, 2/9],
+    'ind.condicional': [2/9, 3/9], 'ind.futuro': [3/9, 4/9],
+    'ind.presente': [4/9, 5/9],
+    'ind.imperfecto': [5/9, 6/9], 'ind.preterito': [6/9, 7/9],
+    'sub.ra': [7/9, 8/9], 'sub.se': [8/9, 1]
+  };
+  const POS_BLOCK10 = {
+    'sub.futuro': [0, 1/10], 'sub.presente': [1/10, 2/10],
+    'ind.condicional': [2/10, 3/10], 'ind.futuro': [3/10, 4/10],
+    'ind.presente': [4/10, 5/10], 'ind.presente.vos': [5/10, 6/10],
+    'ind.imperfecto': [6/10, 7/10], 'ind.preterito': [7/10, 8/10],
+    'sub.ra': [8/10, 9/10], 'sub.se': [9/10, 1]
+  };
+
   const guides = {
     x0:   () => 0,
     x33:  () => canvas.width * 0.33,
@@ -44,7 +59,7 @@
     y33:  () => canvas.height * (11/35),
     y495: () => canvas.height * (17.5/35),
     y60:  () => canvas.height * (21/35),
-    y66:  () => canvas.height * (23.65/35),
+    y66:  () => canvas.height * (23.8/35),
     y93:  () => canvas.height * (33/35),
     yBot: () => canvas.height
   };
@@ -384,7 +399,7 @@
     layout.blocks.forEach((block, idx) => {
       const bx = block.getX(), bw = block.getWidth();
       const by = block.getY(), bh = block.getHeight();
-      const isMiddleBlock = idx === 2 || idx === 3;
+      const isMiddleBlock = idx === 2;
       const lineYs = isMiddleBlock
         ? [2/10, 4/10, 6/10, 8/10].map(p => by + bh * p)
         : [2/9, 4/9, 5/9, 7/9].map(p => by + bh * p);
@@ -467,7 +482,7 @@
 
       if (underType || intraRow === undefined) {
         const underTops = [height * (9/35), height * (21/35), height * (33/35)];
-        const underBots = [height * (11/35), height * (23.65/35), height];
+        const underBots = [height * (11/35), height * (23.8/35), height];
         const underTop = underTops[blockRow] || height * 0.93;
         const underH = (underBots[blockRow] || height) - underTop;
         const halfH = underH / 2;
@@ -505,39 +520,12 @@
         highlightX = fieldX; highlightY = fieldY; highlightW = fieldW; highlightH = fieldH;
       } else {
         const isBlock10 = blockRow === 1 && blockCol === 0;
-        const isMiddleBlock = blockRow === 1;
-        const lineYs = isMiddleBlock
-          ? [2/10, 4/10, 6/10, 8/10].map(p => by + bh * p)
-          : [2/9, 4/9, 5/9, 7/9].map(p => by + bh * p);
-        const zones = [
-          { top: by, bottom: lineYs[0] },
-          { top: lineYs[0], bottom: lineYs[1] },
-          { top: lineYs[1], bottom: lineYs[2] },
-          { top: lineYs[2], bottom: lineYs[3] },
-          { top: lineYs[3], bottom: by + bh }
-        ];
-        const zoneMap = {
-          'sub.futuro': [0, 0], 'sub.presente': [0, 1],
-          'ind.condicional': [1, 0], 'ind.futuro': [1, 1],
-          'ind.presente': [2, 0], 'ind.presente.vos': [2, 1],
-          'ind.imperfecto': [3, 0], 'ind.preterito': [3, 1],
-          'sub.ra': [4, 0], 'sub.se': [4, 1]
-        };
-        const [zoneIdx, slot] = zoneMap[field.formKey] || [2, 0];
-        const zone = zones[zoneIdx];
-        const isSingleField = zoneIdx === 2 && !(blockRow === 1 && blockCol === 0);
-        if (isSingleField) {
-          fieldX = bx;
-          fieldW = bw;
-          fieldY = zone.top;
-          fieldH = zone.bottom - zone.top;
-        } else {
-          const slotH = (zone.bottom - zone.top) / 2;
-          fieldX = bx;
-          fieldW = bw;
-          fieldY = zone.top + slot * slotH;
-          fieldH = slotH;
-        }
+        const posMap = isBlock10 ? POS_BLOCK10 : POS_STANDARD;
+        const [startF, endF] = posMap[field.formKey] || [0.4, 0.5];
+        fieldX = bx;
+        fieldW = bw;
+        fieldY = by + bh * startF;
+        fieldH = bh * (endF - startF);
         highlightX = fieldX; highlightY = fieldY; highlightW = fieldW; highlightH = fieldH;
       }
 
@@ -601,7 +589,7 @@
 
     if (field.intraRow === undefined) {
       const underTops = [h * (9/35), h * (21/35), h * (33/35)];
-      const underBots = [h * (11/35), h * (23.65/35), h];
+      const underBots = [h * (11/35), h * (23.8/35), h];
       const underTop = underTops[field.blockRow] || h * 0.93;
       const underH = (underBots[field.blockRow] || h) - underTop;
       const halfH = underH / 2;
@@ -627,32 +615,9 @@
     }
 
     const isBlock10 = field.blockRow === 1 && field.blockCol === 0;
-    const isMiddleBlock = field.blockRow === 1;
-    const lineYs = isMiddleBlock
-      ? [2/10, 4/10, 6/10, 8/10].map(p => by + bh * p)
-      : [2/9, 4/9, 5/9, 7/9].map(p => by + bh * p);
-    const zones = [
-      { top: by, bottom: lineYs[0] },
-      { top: lineYs[0], bottom: lineYs[1] },
-      { top: lineYs[1], bottom: lineYs[2] },
-      { top: lineYs[2], bottom: lineYs[3] },
-      { top: lineYs[3], bottom: by + bh }
-    ];
-    const zoneMap = {
-      'sub.futuro': [0, 0], 'sub.presente': [0, 1],
-      'ind.condicional': [1, 0], 'ind.futuro': [1, 1],
-      'ind.presente': [2, 0], 'ind.presente.vos': [2, 1],
-      'ind.imperfecto': [3, 0], 'ind.preterito': [3, 1],
-      'sub.ra': [4, 0], 'sub.se': [4, 1]
-    };
-    const [zoneIdx, slot] = zoneMap[field.formKey] || [2, 0];
-    const zone = zones[zoneIdx];
-    const isSingleField = zoneIdx === 2 && !(blockRow === 1 && blockCol === 0);
-    if (isSingleField) {
-      return { x: bx, y: zone.top, w: bw, h: zone.bottom - zone.top };
-    }
-    const slotH = (zone.bottom - zone.top) / 2;
-    return { x: bx, y: zone.top + slot * slotH, w: bw, h: slotH };
+    const posMap = isBlock10 ? POS_BLOCK10 : POS_STANDARD;
+    const [startF, endF] = posMap[field.formKey] || [0.4, 0.5];
+    return { x: bx, y: by + bh * startF, w: bw, h: bh * (endF - startF) };
   }
 
   function findGivenFieldAt(px, py) {
