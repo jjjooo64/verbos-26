@@ -59,7 +59,7 @@
     y33:  () => canvas.height * (11/35),
     y495: () => canvas.height * (17.5/35),
     y60:  () => canvas.height * (21/35),
-    y66:  () => canvas.height * (23.8/35),
+    y66:  () => canvas.height * (24/35),
     y93:  () => canvas.height * (33/35),
     yBot: () => canvas.height
   };
@@ -408,8 +408,8 @@
       lineYs.forEach((ly, i) => {
         ctx.setLineDash([]);
         const isShort = i === 1 || i === 2;
-        const startPct = isShort ? 0.367 : 0.1;
-        const endPct = isShort ? 0.633 : 0.9;
+        const startPct = isShort ? 0.367 : 0.2;
+        const endPct = isShort ? 0.633 : 0.8;
         ctx.beginPath();
         ctx.moveTo(bx + bw * startPct, ly);
         ctx.lineTo(bx + bw * endPct, ly);
@@ -482,7 +482,7 @@
 
       if (underType || intraRow === undefined) {
         const underTops = [height * (9/35), height * (21/35), height * (33/35)];
-        const underBots = [height * (11/35), height * (23.8/35), height];
+        const underBots = [height * (11/35), height * (24/35), height];
         const underTop = underTops[blockRow] || height * 0.93;
         const underH = (underBots[blockRow] || height) - underTop;
         const halfH = underH / 2;
@@ -502,13 +502,17 @@
           fieldX = bx; fieldW = bw;
           fieldY = underTop + slot * thirdH;
           fieldH = thirdH;
+        } else if (blockRow === 1 && blockCol === 1) {
+          // block_11: each field is exactly k tall
+          const k = height / 35;
+          fieldX = bx; fieldW = bw;
+          fieldY = underType === 'aff' ? underTop : underTop + underH - k;
+          fieldH = k;
         } else if (underType === 'aff') {
-          // afirmativo full width on top
           fieldX = bx; fieldW = bw;
           fieldY = underTop;
           fieldH = halfH;
         } else if (underType === 'neg') {
-          // negativo full width on bottom
           fieldX = bx; fieldW = bw;
           fieldY = underTop + halfH;
           fieldH = halfH;
@@ -589,7 +593,7 @@
 
     if (field.intraRow === undefined) {
       const underTops = [h * (9/35), h * (21/35), h * (33/35)];
-      const underBots = [h * (11/35), h * (23.8/35), h];
+      const underBots = [h * (11/35), h * (24/35), h];
       const underTop = underTops[field.blockRow] || h * 0.93;
       const underH = (underBots[field.blockRow] || h) - underTop;
       const halfH = underH / 2;
@@ -604,6 +608,10 @@
         const slotMap = { 'tuAff': 0, 'vosAff': 1, 'neg': 2 };
         const slot = slotMap[field.underType] ?? 0;
         return { x: bx, y: underTop + slot * thirdH, w: bw, h: thirdH };
+      }
+      if (field.blockRow === 1 && field.blockCol === 1) {
+        const k = h / 35;
+        return { x: bx, y: field.underType === 'aff' ? underTop : underTop + underH - k, w: bw, h: k };
       }
       if (field.underType === 'aff') {
         return { x: bx, y: underTop, w: bw, h: halfH };
