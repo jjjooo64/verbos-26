@@ -27,7 +27,7 @@
   const PHI = 1.61803398875;
   let infinitivo = '';
 
-  const DASH_VERTICAL = [2, 5];
+  const DASH_VERTICAL = [1, 10];
   const DASH_HORIZONTAL = [2, 3];
 
   const POS_STANDARD = {
