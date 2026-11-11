@@ -12,6 +12,10 @@ window.ConjugationProvider = {
     const c = castellano[0].conjugation;
     if (!c) return null;
 
+    // Sanity check: returned infinitivo must match input
+    const returnedInf = (c.Impersonal?.Infinitivo || '').toLowerCase().trim();
+    if (returnedInf !== verb) return null;
+
     const person = (idx) => ({
       indicativo: [
         c.Indicativo?.PreteritoIndefinido?.[idx],
